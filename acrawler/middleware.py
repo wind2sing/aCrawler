@@ -101,3 +101,64 @@ class Handler(metaclass=HandlerMetaClass):
         else:
             func(*args, **kwargs)
 
+
+class SingletonMetaclass(type):
+    def __init__(self, *args, **kwargs):
+        self.__instance = None
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        if self.__instance is None:
+            self.__instance = super(
+                SingletonMetaclass, self).__call__(*args, **kwargs)
+            return self.__instance
+        else:
+            return self.__instance
+
+
+class _Middleware(metaclass=SingletonMetaclass):
+    handlers: List[Handler] = []
+    handlers_cls = []
+    crawler = None
+
+    def before_execute(self, family):
+        def decorator(func):
+            self.append_func(family, 1, func)
+
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
+    def after_execute(self, family):
+        def decorator(func):
+            self.append_func(family, 2, func)
+
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
+    def append_func(self, family: str, position: int, func):
+        hcls = HandlerMetaClass(
+            'ShortHandler', (Handler,), {}, family=family, position=position, func=func)
+        self.append_handler_cls(hcls)
+
+    def append_handler_cls(self, handler_cls):
+        self.handlers_cls.append(handler_cls)
+
+    def spawn_handler(self, crawler):
+        for hcls in self.handlers_cls:
+            self.handlers.append(hcls.from_crawler(crawler))
+
+
+middleware = _Middleware()
+"""The singleton instance to manege middlewares.
+
+Use :meth:`@middleware.before_execute` or :meth:`@middleware.after_execute` as a decorator.
+The decorator receive a parameter as the family key to store middleware functions.
+"""
