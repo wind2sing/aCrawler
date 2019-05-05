@@ -27,7 +27,7 @@ class Item(Task):
         )
         self.extra = extra or {}
 
-        # . Item stores information in the `content`.
+        # Item stores information in the `content`, which is a dictionary.
         self.content: dict = {}
         self.content.update(self.extra)
         # self.content.update({'_item_type': self.__class__.__name__})
@@ -159,5 +159,5 @@ class TitleItem(ParselItem):
     css_rule = {'title': 'title::text'}
     field_processors = {'title': Processors.get_first}
 
-    def custom_process(self, item):
-        item.update({'info': 'this is TitleItem'})
+    def custom_process(self, content):
+        content.update({'info': 'this is TitleItem'})

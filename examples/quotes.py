@@ -18,8 +18,8 @@ class QuoteItem(ParselItem):
         'author': Processors.get_first
     }
 
-    def custom_process(self, item):
-        print(self.content)
+    def custom_process(self, content):
+        self.logger.info(content)
 
 
 class AuthorItem(ParselItem):
@@ -36,7 +36,7 @@ class AuthorItem(ParselItem):
 class CrawlerA(Crawler):
     config = {
         'REDIS_ENABLE': False,
-        'LOG_LEVEL': 'DEBUG',
+        'LOG_LEVEL': 'INFO',
     }
 
     start_urls = ['http://quotes.toscrape.com/page/1/',

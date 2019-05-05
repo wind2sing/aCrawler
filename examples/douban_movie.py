@@ -16,8 +16,8 @@ class MovieItem(ParselItem):
         'name': [Processors.get_first, Processors.strip],
     }
 
-    def custom_process(self, item):
-        print(self.content)
+    def custom_process(self, content):
+        print(content)
 
 
 class MyCrawler(Crawler):
