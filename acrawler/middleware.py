@@ -155,6 +155,8 @@ class _Middleware(metaclass=SingletonMetaclass):
         for hcls in self.handlers_cls:
             self.handlers.append(hcls.from_crawler(crawler))
 
+    def __str__(self):
+        return str([handler.__class__.__name__ for handler in self.handlers])
 
 middleware = _Middleware()
 """The singleton instance to manege middlewares.

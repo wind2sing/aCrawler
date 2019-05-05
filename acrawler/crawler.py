@@ -20,7 +20,6 @@ import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -143,6 +142,7 @@ class Crawler(object):
         self._add_default_middleware_handler_cls()
         self.middleware.spawn_handler(self)
         self.logger.info("Initializing middleware's handlers...")
+        self.logger.info(self.middleware)
         self.counter = Counter(loop=self.loop)
 
     def run(self):
@@ -161,27 +161,24 @@ class Crawler(object):
         # return True
         return self.loop.run_until_complete(self.arun())
 
-    
     async def arun(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
 
         self.logger.info("Start crawling...")
         await self._on_start()
         await CrawlerStart(self).execute()
-        asyncio.ensure_future(self.manager(), loop=self.loop)
+        await self.manager()
 
         await CrawlerFinish(self).execute()
         await self._on_close()
         self.logger.info("End crawling...")
         self._log_status()
-        return True       
-
+        return True
 
     async def manager(self):
         """Manages crawler's most important work.
 
         - ensures status logger coroutine
-        - appends middleware with Parsers and request_config
         - creates multiple workers to do tasks.
         """
         try:
@@ -266,9 +263,9 @@ class Crawler(object):
         self.sdl_req = self.schedulers['Request']
 
     def _add_default_middleware_handler_cls(self):
-        for name in self.middleware_config.keys():
+        for kv in sorted(self.middleware_config.items(), key=lambda item: item[1]):
+            name = kv[0]
             p, h = name.rsplit('.', 1)
-
             mod = import_module(p)
             mcls = getattr(mod, h)
             self.middleware.append_handler_cls(mcls)
