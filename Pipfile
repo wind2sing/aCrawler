@@ -4,9 +4,14 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+twine = "*"
+v = {editable = true,version = "*"}
 
 [packages]
 aiohttp = "*"
+pyquery = "*"
+uvloop = "*"
+parsel = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.6"

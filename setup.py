@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-NAME = 'aCrawler'
+NAME = 'acrawler'
 DESCRIPTION = ''
 URL = ''
 EMAIL = 'zireael.me@gmail.com'
@@ -12,7 +12,6 @@ packages = ['acrawler']
 requires = [
     'aiohttp',
     'pyquery',
-    'aioredis',
     'uvloop',
     'parsel'
 ]
