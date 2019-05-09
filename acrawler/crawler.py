@@ -193,7 +193,7 @@ class Crawler(object):
             self.start_time = time.time()
             self.taskers = []
             for worker in self.workers:
-                self.taskers.append(asyncio.create_task(worker.work()))
+                self.taskers.append(self.loop.create_task(worker.work()))
 
         except Exception:
             self.logger.error(traceback.format_exc())

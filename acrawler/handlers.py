@@ -1,5 +1,6 @@
 from acrawler.middleware import Handler
-import aioredis
+import importlib
+import sys
 
 import json
 import logging
@@ -69,6 +70,8 @@ class CrawlerStartAddon(Handler):
 
     async def on_start(self):
         if self.crawler.redis_enable:
+            if 'aioredis' not in sys.modules:
+                importlib.import_module('aioredis')
             self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
         else:
             self.redis = None
@@ -107,6 +110,8 @@ class ItemToRedis(Handler):
     default_key = 'acrawler:items'
 
     async def on_start(self):
+        if 'aioredis' not in sys.modules:
+            importlib.import_module('aioredis')
         self.redis_key = self.crawler.config.get(
             'redis_items_key', self.default_key)
         self.redis = await aioredis.create_redis_pool(

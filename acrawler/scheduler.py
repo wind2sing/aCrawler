@@ -1,7 +1,6 @@
 import logging
 import hashlib
 import asyncio
-import aioredis
 import pickle
 from acrawler.utils import request_from_dict, request_to_dict
 import traceback
