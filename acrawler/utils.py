@@ -1,4 +1,6 @@
 from acrawler.http import Request
+import sys
+from importlib import import_module
 
 def request_to_dict(request: Request):
 
@@ -34,3 +36,10 @@ def merge_config(*configs):
     for config in configs:
         r = {**r, **config}
     return r
+
+def check_import(name:str):
+    if not name in sys.modules:
+        mod = import_module(name)
+        return mod
+    else:
+        return sys.modules[name]

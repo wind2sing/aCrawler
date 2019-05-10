@@ -5,6 +5,7 @@ import sys
 import json
 import logging
 from acrawler.http import Request
+from acrawler.utils import check_import
 import asyncio
 from aiohttp import ClientSession
 
@@ -70,8 +71,7 @@ class CrawlerStartAddon(Handler):
 
     async def on_start(self):
         if self.crawler.redis_enable:
-            if 'aioredis' not in sys.modules:
-                importlib.import_module('aioredis')
+            aioredis = check_import()
             self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
         else:
             self.redis = None
@@ -110,8 +110,7 @@ class ItemToRedis(Handler):
     default_key = 'acrawler:items'
 
     async def on_start(self):
-        if 'aioredis' not in sys.modules:
-            importlib.import_module('aioredis')
+        aioredis = check_import('aioredis')
         self.redis_key = self.crawler.config.get(
             'redis_items_key', self.default_key)
         self.redis = await aioredis.create_redis_pool(

@@ -2,7 +2,7 @@ import logging
 import hashlib
 import asyncio
 import pickle
-from acrawler.utils import request_from_dict, request_to_dict
+from acrawler.utils import request_from_dict, request_to_dict, check_import
 import traceback
 # Typing
 import acrawler
@@ -72,6 +72,7 @@ class RedisDupefilter(BaseDupefilter):
         self.redis = None
 
     async def start(self):
+        aioredis = check_import('aioredis')
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def seen(self, task: _Task):
@@ -152,6 +153,7 @@ class RedisPQ(BaseQueue):
         self.redis = None
 
     async def start(self):
+        aioredis = check_import('aioredis')
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def push(self, task: _Task):
