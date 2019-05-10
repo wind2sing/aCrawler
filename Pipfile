@@ -5,7 +5,9 @@ verify_ssl = true
 
 [dev-packages]
 twine = "*"
-v = {editable = true,version = "*"}
+pytest = "*"
+pytest-asyncio = "*"
+aioredis = "*"
 
 [packages]
 aiohttp = "*"

@@ -40,6 +40,7 @@ class Request(Task):
                  dont_filter: bool = False,
                  meta: dict = None,
                  priority: int = 0,
+                 session = None
                  ):
         super().__init__(dont_filter=dont_filter,
                          priority=priority,
@@ -51,6 +52,7 @@ class Request(Task):
         self.callback = callback
         self.request_config = request_config if request_config else {}
         self.session = None
+        self.outer_session = session
 
     def _fingerprint(self):
         """fingerprint for a request task.
@@ -66,6 +68,8 @@ class Request(Task):
 
     async def fetch(self):
         """Sends a request and return the response as a task."""
+        if self.outer_session:
+            self.session = self.outer_session
         try:
             async with self.session.request(
                     self.method, self.url, **self.request_config) as cresp:
@@ -81,6 +85,8 @@ class Request(Task):
         return rt
 
     async def close(self):
+        if self.outer_session:
+            await self.outer_session.close()
         self.session = None
 
     def __str__(self):
@@ -138,7 +144,7 @@ class Response(Task):
             self.add_callback(self.callback)
 
     @classmethod
-    async def from_ClientResponse(cls, resp, meta, callback, request, json=False):
+    async def from_ClientResponse(cls, resp, meta, callback, request):
         r = cls(
             status_code=resp.status,
             url=resp.url,
