@@ -27,6 +27,7 @@ class RequestPrepareSession(Handler):
 
     async def on_start(self):
         self.session = ClientSession()
+        self.crawler._session = self.session
 
     async def handle_before(self, task: _Task):
         task.session = self.session

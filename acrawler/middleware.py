@@ -41,6 +41,7 @@ class Handler(metaclass=HandlerMetaClass):
     :param func: a callable function or coroutine function
     """
     family = '_Default'
+    priority = 100
 
     def __init__(self,
                  family: str = None,
@@ -86,7 +87,7 @@ class Handler(metaclass=HandlerMetaClass):
         if position == 0 or position == 3:
             await self._call_func(position)
         elif position == 1 or position == 2:
-            if task and task.family == self.family:
+            if task and self.family in task.family:
                 await self._call_func(position, task)
 
     def set_func(self, position: int, func):
@@ -152,7 +153,7 @@ class _Middleware(metaclass=SingletonMetaclass):
         self.handlers_cls.append(handler_cls)
 
     def spawn_handler(self, crawler):
-        for hcls in self.handlers_cls:
+        for hcls in sorted(self.handlers_cls, key=lambda c: c.priority):
             self.handlers.append(hcls.from_crawler(crawler))
 
     def __str__(self):

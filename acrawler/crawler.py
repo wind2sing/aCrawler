@@ -15,9 +15,13 @@ import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from collections import defaultdict
 from pprint import pformat
-import uvloop
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+try:
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except ImportError:
+    pass
+
 
 
 logger = logging.getLogger(__name__)
@@ -263,11 +267,13 @@ class Crawler(object):
         self.sdl_req = self.schedulers['Request']
 
     def _add_default_middleware_handler_cls(self):
-        for kv in sorted(self.middleware_config.items(), key=lambda item: item[1]):
+        for kv in self.middleware_config.items():
             name = kv[0]
+            key = kv[1]
             p, h = name.rsplit('.', 1)
             mod = import_module(p)
             mcls = getattr(mod, h)
+            mcls.priority = key
             self.middleware.append_handler_cls(mcls)
 
     async def _produce_tasks(self):
