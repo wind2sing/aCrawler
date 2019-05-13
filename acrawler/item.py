@@ -121,8 +121,15 @@ class ParselItem(Item):
 
         for field, rule in self.re_rule.items():
             item.update({field: self.sel.re(rule)})
+            
+        self.custom_parse(item)
+
         self.content.update(self.process(item))
         return self.content
+
+    def custom_parse(self, item):
+        pass
+
 
     def process(self, item):
         """Call field processors."""

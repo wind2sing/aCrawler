@@ -40,11 +40,13 @@ class Request(Task):
                  dont_filter: bool = False,
                  meta: dict = None,
                  priority: int = 0,
-                 session = None
+                 session = None,
+                 family = None
                  ):
         super().__init__(dont_filter=dont_filter,
                          priority=priority,
                          meta=meta,
+                         family=family
                          )
 
         self.url = URL(url)
