@@ -1,9 +1,6 @@
-from acrawler.crawler import Crawler
-from acrawler.item import ParselItem
-from acrawler.http import Request
-from acrawler.parser import Parser
 from acrawler.handlers import ItemDebug
-from acrawler.middleware import middleware
+from acrawler import Crawler, Request, ParselItem, Parser, middleware
+
 import re
 import random
 
@@ -52,7 +49,6 @@ class ProxyCrawler(Crawler):
         'DOWNLOAD_DELAY': 1,
     }
 
-    start_urls = ['http://www.xicidaili.com/nn/1']
     max_requests = 2
 
     Parsers = [Parser(css_divider='table tr', item_type=ProxyItem)]

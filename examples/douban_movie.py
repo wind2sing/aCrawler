@@ -1,5 +1,5 @@
 import asyncio
-from acrawler import Parser, Crawler, ParselItem, Processors
+from acrawler import Parser, Crawler, ParselItem, Processors, Request
 
 
 def print_first_twenty_words(values):
@@ -10,8 +10,9 @@ def print_first_twenty_words(values):
 
 
 class MovieItem(ParselItem):
-    css_rule = {'name': 'h1 > span::text',
-                }
+    css_rules = {
+        'name': 'h1 > span::text',
+    }
     field_processors = {
         'name': [Processors.get_first, Processors.strip],
     }

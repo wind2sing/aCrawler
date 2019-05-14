@@ -1,5 +1,4 @@
-from acrawler import Parser, Crawler, Processors
-from acrawler.item import ParselItem
+from acrawler import Parser, Crawler, Processors, ParselItem
 
 
 def print_first_twenty_words(values):
@@ -10,9 +9,9 @@ def print_first_twenty_words(values):
 
 
 class QuoteItem(ParselItem):
-    xpath_rule = {'text': './/span[@class="text"]/text()'}
-    css_rule = {'author': 'small.author::text'}
-    default_rule = {'spider': 'default one'}
+    xpath_rules = {'text': './/span[@class="text"]/text()'}
+    css_rules = {'author': 'small.author::text'}
+    default_rules = {'spider': 'default one'}
     field_processors = {
         'text': print_first_twenty_words,
         'author': Processors.get_first
@@ -23,7 +22,7 @@ class QuoteItem(ParselItem):
 
 
 class AuthorItem(ParselItem):
-    css_rule = {'name': 'h3.author-title::text',
+    css_rules = {'name': 'h3.author-title::text',
                 'born': 'span.author-born-date::text',
                 # 'desc': 'div.author-description::text'
                 }
