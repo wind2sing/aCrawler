@@ -71,33 +71,33 @@ class ParselItem(Item):
     Finally, it will call processors to process each field.
 
 
-    :param css_rule:
-    :param xpath_rule:
-    :param re_rule:
+    :param css_rules:
+    :param xpath_rules:
+    :param re_rules:
     """
-    css_rule = {}
-    xpath_rule = {}
-    re_rule = {}
-    default_rule = {}
+    css_rules = {}
+    xpath_rules = {}
+    re_rules = {}
+    default_rules = {}
 
     divide_sel = ''
     field_processors = {}
 
     def __init__(self, selector,
-                 css_rule=None,
-                 xpath_rule=None,
-                 re_rule=None,
-                 default_rule=None,
+                 css_rules=None,
+                 xpath_rules=None,
+                 re_rules=None,
+                 default_rules=None,
                  field_processors=None,
                  **kwargs):
         super().__init__(**kwargs)
         self.sel = selector
-        if css_rule:
-            self.css_rule = css_rule
-        if xpath_rule:
-            self.xpath_rule = xpath_rule
-        if re_rule:
-            self.re_rule = re_rule
+        if css_rules:
+            self.css_rules = css_rules
+        if xpath_rules:
+            self.xpath_rules = xpath_rules
+        if re_rules:
+            self.re_rules = re_rules
         if field_processors:
             self.field_processors = field_processors
 
@@ -110,16 +110,16 @@ class ParselItem(Item):
     def load(self):
         """Main function to return an item."""
         item = {}
-        for field, default in self.default_rule.items():
+        for field, default in self.default_rules.items():
             item.update({field: default})
 
-        for field, rule in self.xpath_rule.items():
+        for field, rule in self.xpath_rules.items():
             item.update({field: self.sel.xpath(rule).getall()})
 
-        for field, rule in self.css_rule.items():
+        for field, rule in self.css_rules.items():
             item.update({field: self.sel.css(rule).getall()})
 
-        for field, rule in self.re_rule.items():
+        for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
             
         self.custom_parse(item)
@@ -160,10 +160,14 @@ class Processors(object):
             value = str.strip(value)
         return value
     
+    @staticmethod
+    def drop_false(values):
+        return [v for v in values if v]
+    
 
 
 class TitleItem(ParselItem):
-    css_rule = {'title': 'title::text'}
+    css_rules = {'title': 'title::text'}
     field_processors = {'title': Processors.get_first}
 
     def custom_process(self, content):
