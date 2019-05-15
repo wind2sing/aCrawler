@@ -2,11 +2,11 @@ from setuptools import setup
 
 
 NAME = 'acrawler'
-DESCRIPTION = ''
-URL = ''
+DESCRIPTION = 'A simple web-crawling framework, based on aiohttp.'
+URL = 'https://github.com/pansenlin30/aCrawler'
 EMAIL = 'zireael.me@gmail.com'
 AUTHOR = 'Pan Senlin'
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 packages = ['acrawler']
 requires = [
