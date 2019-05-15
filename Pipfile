@@ -8,12 +8,14 @@ twine = "*"
 pytest = "*"
 pytest-asyncio = "*"
 aioredis = "*"
+autopep8 = "*"
 
 [packages]
 aiohttp = "*"
 pyquery = "*"
 uvloop = "*"
 parsel = "*"
+aiofiles = "*"
 
 [requires]
 python_version = "3.6"

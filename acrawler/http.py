@@ -1,5 +1,6 @@
 from acrawler.task import Task
 import aiohttp
+import aiofiles
 import hashlib
 from pathlib import Path
 import traceback
@@ -203,14 +204,17 @@ class Response(Task):
 
 
 async def file_save_callback(response: Response):
+    if response.status == 200:
     where = response.meta['where']
-    with open(where, 'wb') as f:
-        logger.debug('Save file to {}.'.format(where))
-        f.write(response.body)
+        async with aiofiles.open(where, 'wb') as f:
+            logger.info('Save file to {}'.format(where))
+            await f.write(response.body)
+    else:
+        pass
 
 
 class FileRequest(Request):
-    file_dir_key = '_fpath'
+    file_dir_key = '_fdir'
     file_dir = Path.cwd()
     file_name_key = '_fname'
     file_name = ''
