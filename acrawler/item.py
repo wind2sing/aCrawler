@@ -11,13 +11,13 @@ _TaskGenerator = AsyncGenerator[Task, None]
 
 logger = logging.getLogger(__name__)
 
+
 class Item(Task, collections.MutableMapping):
     """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping.
 
     :param extra: During initialing, :attr:`content` will be updated from `extra`.
     """
     logger = logger
-    
 
     def __init__(self, extra: dict = None, **kwargs
                  ):
@@ -31,7 +31,7 @@ class Item(Task, collections.MutableMapping):
         # Item stores information in the `content`, which is a dictionary.
         self.content: dict = {}
         self.content.update(self.extra)
-        
+
         # self.content.update({'_item_type': self.__class__.__name__})
 
     def __len__(self):
@@ -43,7 +43,7 @@ class Item(Task, collections.MutableMapping):
         if hasattr(self.__class__, "__missing__"):
             return self.__class__.__missing__(self, key)
         raise KeyError(key)
-    
+
     def __setitem__(self, key, item):
         self.content[key] = item
 
@@ -63,7 +63,7 @@ class Item(Task, collections.MutableMapping):
             d[key] = value
         return d
 
-    async def _execute(self, **kwargs)->_TaskGenerator:
+    async def _execute(self, **kwargs) -> _TaskGenerator:
         for task in self._process():
             yield task
         yield None
@@ -88,10 +88,34 @@ class DebugItem(Item):
         logger.debug(item)
 
 
-class ParselItem(Item):
-    """An item working with Parser.
+class Processors(object):
+    """ Processors are used to process field values for ParselItem
+    """
 
-    A item receive Parsel's selector and several rules.
+    @staticmethod
+    def get_first(values):
+        if values:
+            return values[0]
+        else:
+            return None
+
+    @staticmethod
+    def strip(value):
+        if isinstance(value, list):
+            value = [str.strip(v) for v in value]
+        elif value:
+            value = str.strip(value)
+        return value
+
+    @staticmethod
+    def drop_false(values):
+        return [v for v in values if v]
+
+
+class ParselItem(Item):
+    """The item working with Parser.
+
+    The item receive Parsel's selector and several rules.
     The selector will process item's fields with these rules.
     Finally, it will call processors to process each field.
 
@@ -99,6 +123,8 @@ class ParselItem(Item):
     :param css_rules:
     :param xpath_rules:
     :param re_rules:
+    :param default_rules:
+    :field_processors:
     """
     css_rules = {}
     xpath_rules = {}
@@ -114,8 +140,9 @@ class ParselItem(Item):
                  re_rules=None,
                  default_rules=None,
                  field_processors=None,
+                 extra=None,
                  **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(extra=extra, **kwargs)
         self.sel = selector
         if css_rules:
             self.css_rules = css_rules
@@ -126,7 +153,7 @@ class ParselItem(Item):
         if field_processors:
             self.field_processors = field_processors
 
-    async def _execute(self, **kwargs)->_TaskGenerator:
+    async def _execute(self, **kwargs) -> _TaskGenerator:
         self.load()
         async for task in super()._execute(**kwargs):
             yield task
@@ -146,7 +173,7 @@ class ParselItem(Item):
 
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
-            
+
         self.custom_parse(item)
 
         self.content.update(self.process(item))
@@ -154,7 +181,6 @@ class ParselItem(Item):
 
     def custom_parse(self, item):
         pass
-
 
     def process(self, item):
         """Call field processors."""
@@ -166,29 +192,6 @@ class ParselItem(Item):
                 item[field] = processors(item[field])
 
         return item
-
-
-class Processors(object):
-
-    @staticmethod
-    def get_first(values):
-        if values:
-            return values[0]
-        else:
-            return None
-
-    @staticmethod
-    def strip(value):
-        if isinstance(value,list):
-            value = [str.strip(v) for v in value]
-        elif value:
-            value = str.strip(value)
-        return value
-    
-    @staticmethod
-    def drop_false(values):
-        return [v for v in values if v]
-    
 
 
 class TitleItem(ParselItem):
