@@ -1,17 +1,18 @@
 import logging
+import collections
 from acrawler.task import Task
 from parsel import Selector
 from inspect import isfunction, iscoroutinefunction, ismethod, isgeneratorfunction
+
 # Typing
 from typing import Union, Optional, Any, AsyncGenerator, Callable, Dict, List
 _Function = Callable
-_TaskGenerator = AsyncGenerator['Task', None]
+_TaskGenerator = AsyncGenerator[Task, None]
 
 logger = logging.getLogger(__name__)
 
-
-class Item(Task):
-    """Item is a Task that execute :meth:`custom_process` work.
+class Item(Task, collections.MutableMapping):
+    """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping.
 
     :param extra: During initialing, :attr:`content` will be updated from `extra`.
     """
@@ -30,13 +31,37 @@ class Item(Task):
         # Item stores information in the `content`, which is a dictionary.
         self.content: dict = {}
         self.content.update(self.extra)
+        
         # self.content.update({'_item_type': self.__class__.__name__})
 
-    def __getitem__(self, key):
-        return self.get(key)
+    def __len__(self):
+        return len(self.content)
 
-    def get(self, k, d=None):
-        return self.content.get(k, d)
+    def __getitem__(self, key):
+        if key in self.content:
+            return self.content[key]
+        if hasattr(self.__class__, "__missing__"):
+            return self.__class__.__missing__(self, key)
+        raise KeyError(key)
+    
+    def __setitem__(self, key, item):
+        self.content[key] = item
+
+    def __delitem__(self, key):
+        del self.content[key]
+
+    def __iter__(self):
+        return iter(self.content)
+
+    def __contains__(self, key):
+        return key in self.content
+
+    @classmethod
+    def fromkeys(cls, iterable, value=None):
+        d = cls()
+        for key in iterable:
+            d[key] = value
+        return d
 
     async def _execute(self, **kwargs)->_TaskGenerator:
         for task in self._process():
