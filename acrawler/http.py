@@ -37,7 +37,7 @@ class Request(Task):
     """
 
     def __init__(self, url: _LooseURL,
-                 callback: _Function = None,
+                 callback: _Functions = None,
                  method: str = 'GET',
                  request_config: dict = None,
                  encoding=None,
@@ -58,6 +58,7 @@ class Request(Task):
         self.url = URL(url)
         self.url_str = str(self.url)
         self.method = method
+        self.callbacks = []
         self.add_callback(callback)
         self.request_config = request_config if request_config else {}
         self.encoding = encoding
@@ -66,8 +67,11 @@ class Request(Task):
         self.logger = logger
 
     def add_callback(self, func: _Function):
-        if isfunction(func) or ismethod(func):
-            self.callback = func
+        if isinstance(func, Iterable):
+            for f in func:
+                self.callbacks.append(func)
+        else:
+            self.callbacks.append(func)
 
     def reset_callback(self):
         self.callbacks = []
@@ -133,7 +137,7 @@ class Response(Task):
                  request: Request,
                  body: bytes,
                  text: str = None,
-                 callback: _Functions = None,
+                 callbacks: _Functions = None,
                  meta: dict = None,
                  ):
         super().__init__(dont_filter=True)
@@ -147,7 +151,7 @@ class Response(Task):
         self.text = text
         self.meta = meta
         self.request = request
-        self.add_callback(callback)
+        self.callbacks = callbacks
         self.logger = logger
 
         self.sel: Selector = Selector(self.text)
@@ -180,24 +184,27 @@ class Response(Task):
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
-        if isasyncgenfunction(self.callback):
-            async for task in self.callback(self):
+        for callback in self.callbacks:
+            if isasyncgenfunction(callback):
+                async for task in callback(self):
                 yield task
-        elif isgeneratorfunction(self.callback):
-            for task in self.callback(self):
+            elif isgeneratorfunction(callback):
+                for task in callback(self):
                 yield task
-        elif iscoroutinefunction(self.callback):
-            yield await self.callback(self)
-        elif ismethod(self.callback) or isfunction(self.callback):
-            yield self.callback(self)
+            elif iscoroutinefunction(callback):
+                yield await callback(self)
+            elif ismethod(callback) or isfunction(callback):
+                yield callback(self)
 
     def add_callback(self, func: _Function):
-        """Add a callable function to response's :attr:`callbacks`"""
-        if isfunction(func) or ismethod(func):
-            self.callback = func
+        if isinstance(func, Iterable):
+            for f in func:
+                self.callbacks.append(func)
+        else:
+            self.callbacks.append(func)
 
     def reset_callback(self):
-        self.callback = None
+        self.callbacks = []
 
     def __str__(self):
         return f"<Task Response> <{self.status}> ({self.url})"

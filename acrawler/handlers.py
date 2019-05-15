@@ -71,6 +71,15 @@ class RequestDelay(Handler):
     async def handle_after(self, request: _Request):
         await asyncio.sleep(self.crawler.config.get('DOWNLOAD_DELAY'))
 
+class ResponseAddParser(Handler):
+    """a handler (before execution) which add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
+
+    family = 'Response'
+
+    def handle_before(self, response: _Response):
+        for parser in self.crawler.Parsers:
+            response.add_callback(parser.parse)
+
 
 class CrawlerStartAddon(Handler):
     family = 'CrawlerStart'
