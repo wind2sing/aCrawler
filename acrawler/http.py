@@ -96,8 +96,23 @@ class Request(Task):
             async with self.session.request(
                     self.method, self.url, **self.request_config) as cresp:
 
-                resp = await Response.from_ClientResponse(cresp, request=self)
-                rt = resp
+                body = await cresp.read()
+                text = None
+                try:
+                    text = await cresp.text(request.encoding)
+                except Exception:
+                    text = str(body)
+
+                self.response = await Response.from_ClientResponse(url=cresp.url,
+                                                                   status=cresp.status,
+                                                                   cookies=cresp.cookies,
+                                                                   headers=cresp.headers,
+                                                                   history=cresp.history,
+                                                                   body=body,
+                                                                   text=text,
+                                                                   request=self)
+                rt = self.response
+
         except Exception as e:
             self.logger.error(traceback.format_exc())
             rt = e
@@ -108,7 +123,6 @@ class Request(Task):
     async def close(self):
         if self.outer_session:
             await self.outer_session.close()
-        self.session = None
 
     def __str__(self):
         return "<%s> (%s)" % ('Task Request', self.url)
@@ -161,36 +175,32 @@ class Response(Task):
         self.doc.make_links_absolute(str(self.request.url))
 
     @classmethod
-    async def from_ClientResponse(cls, resp, request: Request):
-        body = await resp.read()
-        text = None
-        try:
-            text = await resp.text(request.encoding)
-        except Exception:
-            text = str(body)
+    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, text, request: Request):
+
         r = cls(
-            status=resp.status,
-            url=resp.url,
-            cookies=resp.cookies,
-            headers=resp.headers,
-            history=resp.history,
+            url=url,
+            status=status,
+            cookies=cookies,
+            headers=headers,
+            history=history,
             meta=request.meta,
-            callback=request.callback,
+            callbacks=request.callbacks,
             request=request,
             body=body,
             text=text,
         )
         return r
 
+
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
         for callback in self.callbacks:
             if isasyncgenfunction(callback):
                 async for task in callback(self):
-                yield task
+                    yield task
             elif isgeneratorfunction(callback):
                 for task in callback(self):
-                yield task
+                    yield task
             elif iscoroutinefunction(callback):
                 yield await callback(self)
             elif ismethod(callback) or isfunction(callback):
@@ -212,7 +222,7 @@ class Response(Task):
 
 async def file_save_callback(response: Response):
     if response.status == 200:
-    where = response.meta['where']
+        where = response.meta['where']
         async with aiofiles.open(where, 'wb') as f:
             logger.info('Save file to {}'.format(where))
             await f.write(response.body)
