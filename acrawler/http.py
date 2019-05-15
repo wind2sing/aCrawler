@@ -1,6 +1,7 @@
 from acrawler.task import Task
 import aiohttp
 import hashlib
+from pathlib import Path
 import traceback
 import logging
 from yarl import URL
@@ -199,3 +200,37 @@ class Response(Task):
 
     def __str__(self):
         return f"<Task Response> <{self.status}> ({self.url})"
+
+
+async def file_save_callback(response: Response):
+    where = response.meta['where']
+    with open(where, 'wb') as f:
+        logger.debug('Save file to {}.'.format(where))
+        f.write(response.body)
+
+
+class FileRequest(Request):
+    file_dir_key = '_fpath'
+    file_dir = Path.cwd()
+    file_name_key = '_fname'
+    file_name = ''
+
+    def __init__(self, url, callback=None, method='GET', request_config=None, encoding=None, dont_filter=False, meta=None, priority=0, session=None, family=None):
+        if not callback:
+            callback = file_save_callback
+
+        super().__init__(url, callback=callback, method=method, request_config=request_config, encoding=encoding,
+                         dont_filter=dont_filter, meta=meta, priority=priority, session=session, family=family)
+
+    async def _execute(self, **kwargs):
+        if self.file_dir_key in self.meta:
+            self.file_dir = Path(self.meta[self.file_dir_key])
+
+        self.file_name = self.url_str.split('/')[-1]
+        if self.file_name_key in self.meta:
+            self.file_name = self.meta[self.file_name_key]
+
+        self.meta['where'] = self.file_dir/self.file_name
+
+        async for task in super()._execute(**kwargs):
+            yield task
