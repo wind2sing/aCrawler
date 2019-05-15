@@ -123,6 +123,7 @@ class Request(Task):
     async def close(self):
         if self.outer_session:
             await self.outer_session.close()
+        self.session = None
 
     def __str__(self):
         return "<%s> (%s)" % ('Task Request', self.url)

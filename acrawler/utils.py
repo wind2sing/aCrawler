@@ -1,6 +1,8 @@
 from acrawler.http import Request
 import sys
 from importlib import import_module
+import webbrowser
+from pathlib import Path
 
 def request_to_dict(request: Request):
 
@@ -43,3 +45,11 @@ def check_import(name:str):
         return mod
     else:
         return sys.modules[name]
+
+def open_html(html, path=None):
+    if not path:
+        path = Path.home()/'.temp.html'
+    url = 'file://' + str(path)
+    with open(path, 'w') as f:
+        f.write(html)
+    webbrowser.open(url)
