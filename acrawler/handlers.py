@@ -29,21 +29,26 @@ class RequestPrepareSession(Handler):
         self.session = ClientSession()
         self.crawler._session = self.session
 
-    async def handle_before(self, task: _Task):
+    async def handle_before(self, task):
         task.session = self.session
 
     async def on_close(self):
         await self.session.close()
 
-
-class ResponseAddParser(Handler):
-    """a handler (before execution) which add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
-
+class ResponseCheckStatus(Handler):
     family = 'Response'
 
-    def handle_before(self, response: _Response):
-        for parser in self.crawler.Parsers:
-            response.add_callback(parser.parse)
+    async def handle_before(self, response):
+        if response.status >= 400:
+            self.logger.error('Task failed {}'.format(response))
+            task = response.request
+            if task.tries < self.crawler.max_tries:
+                task.dont_filter = True
+                await self.crawler.add_task(response.request)
+            else:
+                self.logger.warning(
+                    'Drop the task %s', task)
+
 
 
 class RequestMergeConfig(Handler):

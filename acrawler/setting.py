@@ -10,6 +10,7 @@ MIDDLEWARE_CONFIG = {
     'acrawler.handlers.ResponseAddParser': 100,
     'acrawler.handlers.RequestMergeConfig': 100,
     'acrawler.handlers.RequestDelay': 100,
+    'acrawler.handlers.ResponseCheckStatus':100,
     'acrawler.handlers.CrawlerStartAddon': 100,
     'acrawler.handlers.CrawlerFinishAddon': 100
 }
