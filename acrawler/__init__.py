@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 handler = logging.StreamHandler()
 formatter = logging.Formatter(
-    "%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+    "%(asctime)s %(name)-20s %(levelname)-8s %(message)s")
 handler.setFormatter(formatter)
 
 

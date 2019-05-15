@@ -115,7 +115,7 @@ class Crawler(object):
     max_tries: int = 3
 
     #: Every crawler will obtain `max_requests` request concurrently.
-    max_requests: int = 2
+    max_requests: int = 5
 
     #: Ready for vanilla :meth:`start_requests`
     start_urls: List[str] = []
@@ -270,11 +270,12 @@ class Crawler(object):
         for kv in self.middleware_config.items():
             name = kv[0]
             key = kv[1]
-            p, h = name.rsplit('.', 1)
-            mod = import_module(p)
-            mcls = getattr(mod, h)
-            mcls.priority = key
-            self.middleware.append_handler_cls(mcls)
+            if key!=0:
+                p, h = name.rsplit('.', 1)
+                mod = import_module(p)
+                mcls = getattr(mod, h)
+                mcls.priority = key
+                self.middleware.append_handler_cls(mcls)
 
     async def _produce_tasks(self):
         self.logger.info("Produce initial tasks...")
@@ -313,4 +314,4 @@ class Crawler(object):
             success = self.counter.counts[family][1]
             failure = self.counter.counts[family][0]
             self.logger.info(
-                f'Statistic:{family:<15} ~ success {success}, failure {failure}; {success / time_delta:.2f} tasks/s')
+                f'Statistic:{family:<15} ~ success {success}, failure {failure}')

@@ -38,7 +38,7 @@ class Handler(metaclass=HandlerMetaClass):
     :param family: associated with `Task`'s family.
     :param position: 0 means that function is called before
         task's execution. 1 means after task's execution.
-    :param func: a callable function or coroutine function
+    :param func: a callable function or coroutine function, cannot be a generator
     """
     family = '_Default'
     priority = 100
