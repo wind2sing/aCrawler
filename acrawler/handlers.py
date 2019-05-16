@@ -86,7 +86,7 @@ class CrawlerStartAddon(Handler):
 
     async def on_start(self):
         if self.crawler.redis_enable:
-            aioredis = check_import()
+            aioredis = check_import('aioredis')
             self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
         else:
             self.redis = None
@@ -127,7 +127,7 @@ class ItemToRedis(Handler):
     async def on_start(self):
         aioredis = check_import('aioredis')
         self.redis_key = self.crawler.config.get(
-            'redis_items_key', self.default_key)
+            'REDIS_ITEMS_KEY', self.default_key)
         self.redis = await aioredis.create_redis_pool(
             self.address,
             maxsize=self.maxsize,

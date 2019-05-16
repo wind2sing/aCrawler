@@ -1,5 +1,6 @@
 from acrawler.http import Request
 import sys
+import asyncio
 import logging
 import webbrowser
 from importlib import import_module
@@ -45,3 +46,19 @@ def get_logger(name: str = 'user'):
     if not name.startswith('acrawler.'):
         name = 'acrawler.'+name
     return logging.getLogger(name)
+
+
+def redis_push_start_urls(key, url=None, address='redis://localhost'):
+    asyncio.get_event_loop().run_until_complete(redis_push_start_urls_coro(key, url, address))
+
+
+async def redis_push_start_urls_coro(key, url=None, address='redis://localhost'):
+    aioredis = import_module('aioredis')
+    redis = await aioredis.create_redis_pool(address)
+    if isinstance(url, list):
+        for u in url:
+            await redis.rpush(key, u)
+    else:
+        await redis.rpush(key, url)
+    redis.close()
+    await redis.wait_closed()
