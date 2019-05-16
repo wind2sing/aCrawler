@@ -1,19 +1,17 @@
+# Scrape quotes from http://quotes.toscrape.com/
 from acrawler import Parser, Crawler, Processors, ParselItem, get_logger
 
-logger = get_logger()
-def print_first_twenty_words(values):
-    if values:
-        return values[0][:20]
-    else:
-        None
+logger = get_logger('quotes')
 
+def get_twenty_words(value):
+    return value[:20]
 
 class QuoteItem(ParselItem):
     xpath_rules = {'text': './/span[@class="text"]/text()'}
     css_rules = {'author': 'small.author::text'}
     default_rules = {'spider': 'default one'}
     field_processors = {
-        'text': print_first_twenty_words,
+        'text': [Processors.get_first, get_twenty_words],
         'author': Processors.get_first
     }
 
@@ -24,17 +22,20 @@ class QuoteItem(ParselItem):
 class AuthorItem(ParselItem):
     css_rules = {'name': 'h3.author-title::text',
                 'born': 'span.author-born-date::text',
-                # 'desc': 'div.author-description::text'
+                'desc': 'div.author-description::text'
                 }
     field_processors = {
         'name': [Processors.get_first, Processors.strip],
         'born': Processors.get_first,
+        'desc': [Processors.get_first, Processors.strip, get_twenty_words]
     }
 
+    def custom_process(self, content):
+        logger.info(content)
 
-class CrawlerA(Crawler):
+
+class QuoteCrawler(Crawler):
     config = {
-        'REDIS_ENABLE': False,
         'LOG_LEVEL': 'INFO',
     }
 
@@ -57,4 +58,4 @@ class CrawlerA(Crawler):
 
 
 if __name__ == '__main__':
-    CrawlerA().run()
+    QuoteCrawler().run()
