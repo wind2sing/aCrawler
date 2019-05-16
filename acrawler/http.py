@@ -99,8 +99,9 @@ class Request(Task):
                 body = await cresp.read()
                 text = None
                 try:
-                    text = await cresp.text(request.encoding)
-                except Exception:
+                    text = await cresp.text(self.encoding)
+                except Exception as e:
+                    self.logger.warning("Decoding body failed: {}".format(e))
                     text = str(body)
 
                 self.response = await Response.from_ClientResponse(url=cresp.url,
@@ -191,7 +192,6 @@ class Response(Task):
             text=text,
         )
         return r
-
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
