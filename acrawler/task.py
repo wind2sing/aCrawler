@@ -102,7 +102,6 @@ class Task:
         state = self.__dict__
         del state['middleware']
         del state['crawler']
-        print(state)
         return state
 
     def __setstate__(self, state):

@@ -40,13 +40,11 @@ class Request(Task):
                  callback: _Functions = None,
                  method: str = 'GET',
                  request_config: dict = None,
-                 encoding=None,
 
                  # Below are paras for parent class
                  dont_filter: bool = False,
                  meta: dict = None,
                  priority: int = 0,
-                 session=None,
                  family=None
                  ):
         super().__init__(dont_filter=dont_filter,
@@ -61,9 +59,8 @@ class Request(Task):
         self.callbacks = []
         self.add_callback(callback)
         self.request_config = request_config if request_config else {}
-        self.encoding = encoding
         self.session = None
-        self.outer_session = session
+        self.response: Response = None
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -89,8 +86,10 @@ class Request(Task):
 
     async def fetch(self):
         """Sends a request and return the response as a task."""
-        if self.outer_session:
-            self.session = self.outer_session
+        to_close = False
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+            to_close = True
         try:
             async with self.session.request(
                     self.method, self.url, **self.request_config) as cresp:
@@ -117,13 +116,9 @@ class Request(Task):
             logger.error(traceback.format_exc())
             rt = e
         finally:
-            await self.close()
+            if to_close:
+                await self.session.close()
         return rt
-
-    async def close(self):
-        if self.outer_session:
-            await self.outer_session.close()
-        self.session = None
 
     def __str__(self):
         return "<%s> (%s)" % ('Task Request', self.url)
@@ -167,7 +162,6 @@ class Response(Task):
         self.meta = meta
         self.request = request
         self.callbacks = callbacks
-        self.logger = logger
 
         self.sel: Selector = Selector(self.text)
 

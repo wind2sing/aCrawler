@@ -2,8 +2,9 @@ import logging
 import hashlib
 import asyncio
 import pickle
-from acrawler.utils import request_from_dict, request_to_dict, check_import
+from acrawler.utils import check_import
 import traceback
+
 # Typing
 import acrawler
 
@@ -121,10 +122,10 @@ class BaseQueue:
         pass
 
     def serialize(self, task):
-        return pickle.dumps(request_to_dict(task))
+        return pickle.dumps(task)
 
     def deserialize(self, message)->_Task:
-        return request_from_dict(pickle.loads(message))
+        return pickle.loads(message)
 
 
 class AsyncPQ(BaseQueue):
@@ -140,7 +141,7 @@ class AsyncPQ(BaseQueue):
         return (await self.pq.get())[1]
 
     async def get_length(self):
-        return self.pq.qsize
+        return self.pq.qsize()
 
     async def clear(self):
         self.pq = asyncio.PriorityQueue()

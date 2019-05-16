@@ -6,25 +6,6 @@ from importlib import import_module
 from pathlib import Path
 
 
-
-def request_to_dict(request: Request):
-
-    d = {
-        'url': request.url,
-        'callback': request.callback,
-        'method': request.method,
-        'request_config': request.request_config,
-        'dont_filter': request.dont_filter,
-        'meta': request.meta,
-        'priority': request.priority
-    }
-    return d
-
-
-def request_from_dict(d):
-    return Request(**d)
-
-
 def config_from_setting(module):
     context = {}
     for key in dir(module):
