@@ -53,7 +53,6 @@ class Handler(metaclass=HandlerMetaClass):
         if family:
             self.family = family
         self.crawler = crawler
-        self.logger = logger
 
         self.funcs = [None] * 4
         self.is_coro = [True] * 4

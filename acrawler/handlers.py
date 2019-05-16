@@ -40,13 +40,13 @@ class ResponseCheckStatus(Handler):
 
     async def handle_before(self, response):
         if response.status >= 400:
-            self.logger.error('Task failed {}'.format(response))
+            logger.error('Task failed {}'.format(response))
             task = response.request
             if task.tries < self.crawler.max_tries:
                 task.dont_filter = True
                 await self.crawler.add_task(response.request)
             else:
-                self.logger.warning(
+                logger.warning(
                     'Drop the task %s', task)
 
 
@@ -115,7 +115,7 @@ class ItemDebug(Handler):
     family = 'Item'
 
     def handle_after(self, item):
-        item.logger.debug(item.content)
+        logger.debug(item.content)
 
 
 class ItemToRedis(Handler):
@@ -132,7 +132,7 @@ class ItemToRedis(Handler):
             self.address,
             maxsize=self.maxsize,
             loop=self.crawler.loop)
-        self.logger.info(f'Connecting to Redis... {self.redis}')
+        logger.info(f'Connecting to Redis... {self.redis}')
 
     async def handle_after(self, item):
         await self.redis.lpush(self.redis_key, json.dumps(
@@ -154,7 +154,7 @@ class ItemToMongo(Handler):
         self.client = motor.motor_asyncio.AsyncIOMotorClient(self.address)
         self.db = self.client[self.db_name]
         self.col = self.db[self.col_name]
-        self.logger.info(f'Connecting to MongoDB... {self.col}')
+        logger.info(f'Connecting to MongoDB... {self.col}')
 
     async def handle_after(self, item):
         self.col.insert_one(item.content)

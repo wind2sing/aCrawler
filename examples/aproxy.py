@@ -1,12 +1,15 @@
 from acrawler.handlers import ItemDebug
-from acrawler import Crawler, Request, ParselItem, Parser, middleware
-
+from acrawler import Crawler, Request, ParselItem, Parser, middleware, get_logger
 import re
 import random
 
+
+logger = get_logger()
 PATTERN = re.compile(
     r'\b((?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))\D*([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])')
 
+
+# Some websites only allow IP access from China
 WEBSITES = [
     {
         'name': 'xicidaili.com',
@@ -40,7 +43,7 @@ class ProxyItem(ParselItem):
             ip = match.groups()[0]
             port = match.groups()[1]
             content['proxy'] = ip+':'+port
-            self.logger.info(content)
+            logger.info(content)
 
 
 class ProxyCrawler(Crawler):
@@ -62,10 +65,8 @@ class ProxyCrawler(Crawler):
 
         random.shuffle(urls)
         for url in urls:
-            yield Request(url, callback=self.par)
+            yield Request(url)
 
-    def par(self, response):
-        print(response)
 
 
 if __name__ == "__main__":

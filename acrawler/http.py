@@ -64,7 +64,6 @@ class Request(Task):
         self.encoding = encoding
         self.session = None
         self.outer_session = session
-        self.logger = logger
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -99,9 +98,9 @@ class Request(Task):
                 body = await cresp.read()
                 text = None
                 try:
-                    text = await cresp.text(self.encoding)
+                    text = await cresp.text()
                 except Exception as e:
-                    self.logger.warning("Decoding body failed: {}".format(e))
+                    logger.warning("Decoding body failed: {}".format(e))
                     text = str(body)
 
                 self.response = await Response.from_ClientResponse(url=cresp.url,
@@ -115,7 +114,7 @@ class Request(Task):
                 rt = self.response
 
         except Exception as e:
-            self.logger.error(traceback.format_exc())
+            logger.error(traceback.format_exc())
             rt = e
         finally:
             await self.close()

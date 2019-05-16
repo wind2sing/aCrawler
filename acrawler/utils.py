@@ -1,8 +1,11 @@
 from acrawler.http import Request
 import sys
-from importlib import import_module
+import logging
 import webbrowser
+from importlib import import_module
 from pathlib import Path
+
+
 
 def request_to_dict(request: Request):
 
@@ -39,12 +42,14 @@ def merge_config(*configs):
         r = {**r, **config}
     return r
 
-def check_import(name:str):
+
+def check_import(name: str):
     if not name in sys.modules:
         mod = import_module(name)
         return mod
     else:
         return sys.modules[name]
+
 
 def open_html(html, path=None):
     if not path:
@@ -53,3 +58,9 @@ def open_html(html, path=None):
     with open(path, 'w') as f:
         f.write(html)
     webbrowser.open(url)
+
+
+def get_logger(name: str = 'user'):
+    if not name.startswith('acrawler.'):
+        name = 'acrawler.'+name
+    return logging.getLogger(name)

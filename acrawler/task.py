@@ -1,4 +1,5 @@
 import time
+import logging
 from inspect import iscoroutinefunction
 from acrawler.middleware import middleware
 import asyncio
@@ -13,6 +14,7 @@ _Crawler = 'acrawler.crawler.Crawler'
 _Function = Callable
 _TaskGenerator = AsyncGenerator['Task', None]
 
+logger = logging.getLogger(__name__)
 
 class Task:
     """Task is scheduled by crawler to execute.
@@ -96,6 +98,18 @@ class Task:
         """should be rewritten as a fingerprint calculator in the subclass."""
         raise NotImplementedError
 
+    def __getstate__(self):
+        state = self.__dict__
+        del state['middleware']
+        del state['crawler']
+        print(state)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.__dict__['middleware'] = middleware
+        self.__dict__['crawler'] = middleware.crawler
+
 
 class DummyTask(Task):
 
@@ -138,7 +152,7 @@ class CrawlerStart(SpecialTask):
         await self._produce_tasks()
 
     async def _produce_tasks(self):
-        self.crawler.logger.info("Produce initial tasks...")
+        logger.info("Produce initial tasks...")
         async for task in self.crawler.start_requests():
             if await self.crawler.schedulers['Request'].produce(task):
                 self.crawler.counter.task_add()
@@ -158,5 +172,5 @@ class CrawlerFinish(SpecialTask):
         for tasker in self.crawler.taskers:
             tasker.cancel()
 
-        self.crawler.logger.info('All tasks finished!')
-        self.crawler.logger.info(f'{self.crawler.counter.counts}')
+        logger.info('All tasks finished!')
+        logger.info(f'{self.crawler.counter.counts}')

@@ -1,6 +1,6 @@
-from acrawler import Parser, Crawler, Processors, ParselItem
+from acrawler import Parser, Crawler, Processors, ParselItem, get_logger
 
-
+logger = get_logger()
 def print_first_twenty_words(values):
     if values:
         return values[0][:20]
@@ -18,7 +18,7 @@ class QuoteItem(ParselItem):
     }
 
     def custom_process(self, content):
-        self.logger.info(content)
+        logger.info(content)
 
 
 class AuthorItem(ParselItem):
