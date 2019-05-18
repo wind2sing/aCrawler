@@ -127,30 +127,47 @@ class ParselItem(Item):
     :param default_rules:
     :field_processors:
     """
+
+    default_rules = {}
+
+    css_rules_first = {}
+    xpath_rules_first = {}
+    re_rules_first = {}
+
     css_rules = {}
     xpath_rules = {}
     re_rules = {}
-    default_rules = {}
 
-    divide_sel = ''
     field_processors = {}
 
     def __init__(self, selector,
                  css_rules=None,
                  xpath_rules=None,
                  re_rules=None,
+                 css_rules_first=None,
+                 xpath_rules_first=None,
+                 re_rules_first=None,
                  default_rules=None,
                  field_processors=None,
                  extra=None,
                  **kwargs):
         super().__init__(extra=extra, **kwargs)
         self.sel = selector
+
+        if css_rules_first:
+            self.css_rules_first = css_rules_first
+        if xpath_rules_first:
+            self.xpath_rules_first = xpath_rules_first
+        if re_rules_first:
+            self.re_rules_first = re_rules_first
+
         if css_rules:
             self.css_rules = css_rules
         if xpath_rules:
             self.xpath_rules = xpath_rules
         if re_rules:
             self.re_rules = re_rules
+
         if field_processors:
             self.field_processors = field_processors
 
@@ -166,11 +183,20 @@ class ParselItem(Item):
         for field, default in self.default_rules.items():
             item.update({field: default})
 
-        for field, rule in self.xpath_rules.items():
-            item.update({field: self.sel.xpath(rule).getall()})
+        for field, rule in self.css_rules_first.items():
+            item.update({field: self.sel.css(rule).get()})
+
+        for field, rule in self.xpath_rules_first.items():
+            item.update({field: self.sel.xpath(rule).get()})
+
+        for field, rule in self.re_rules_first.items():
+            item.update({field: self.sel.re_first(rule)})
 
         for field, rule in self.css_rules.items():
             item.update({field: self.sel.css(rule).getall()})
+
+        for field, rule in self.xpath_rules.items():
+            item.update({field: self.sel.xpath(rule).getall()})
 
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
@@ -181,6 +207,8 @@ class ParselItem(Item):
         return self.content
 
     def custom_parse(self, item):
+        """ Could be rewritten for your own purpose.
+        """
         pass
 
     def process(self, item):

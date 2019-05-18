@@ -7,12 +7,12 @@ def get_twenty_words(value):
     return value[:20]
 
 class QuoteItem(ParselItem):
-    xpath_rules = {'text': './/span[@class="text"]/text()'}
-    css_rules = {'author': 'small.author::text'}
-    default_rules = {'spider': 'default one'}
+    default_rules = {'type': 'quote'}
+    css_rules_first = {'author': 'small.author::text'}
+    xpath_rules_first = {'text': './/span[@class="text"]/text()'}
+
     field_processors = {
-        'text': [Processors.get_first, get_twenty_words],
-        'author': Processors.get_first
+        'text': get_twenty_words,
     }
 
     def custom_process(self, content):
@@ -20,14 +20,13 @@ class QuoteItem(ParselItem):
 
 
 class AuthorItem(ParselItem):
-    css_rules = {'name': 'h3.author-title::text',
+    css_rules_first = {'name': 'h3.author-title::text',
                 'born': 'span.author-born-date::text',
                 'desc': 'div.author-description::text'
                 }
     field_processors = {
-        'name': [Processors.get_first, Processors.strip],
-        'born': Processors.get_first,
-        'desc': [Processors.get_first, Processors.strip, get_twenty_words]
+        'name': [Processors.strip],
+        'desc': [Processors.strip, get_twenty_words]
     }
 
     def custom_process(self, content):
