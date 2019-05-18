@@ -7,7 +7,7 @@ REQUEST_CONFIG = {
 
 MIDDLEWARE_CONFIG = {
     'acrawler.handlers.RequestPrepareSession': 100,
-    'acrawler.handlers.ResponseAddParser': 100,
+    'acrawler.handlers.ResponseAddCallback': 100,
     'acrawler.handlers.RequestMergeConfig': 100,
     'acrawler.handlers.RequestDelay': 100,
     'acrawler.handlers.ResponseCheckStatus':100,

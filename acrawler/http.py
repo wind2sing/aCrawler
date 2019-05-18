@@ -11,7 +11,7 @@ from pyquery import PyQuery
 from parsel import Selector
 from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
-    isfunction, iscoroutinefunction, ismethod
+    isfunction, iscoroutinefunction, ismethod, signature
 # Typing
 
 from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
@@ -106,7 +106,8 @@ class Request(Task):
                                                                    history=cresp.history,
                                                                    body=body,
                                                                    encoding=encoding,
-                                                                   request=self)
+                                                                   request=self,
+                                                                   family=self.primary_family)
                 rt = self.response
 
         except Exception as e:
@@ -146,8 +147,10 @@ class Response(Task):
                  encoding: str,
                  callbacks: _Functions = None,
                  meta: dict = None,
+                 **kwargs
                  ):
-        super().__init__(dont_filter=True)
+        dont_filter = kwargs.pop('dont_filter', True)
+        super().__init__(dont_filter=dont_filter, **kwargs)
         self.url = url
         self.url_str = str(url)
         self.status = status
@@ -173,7 +176,7 @@ class Response(Task):
             self.sel = None
 
     @classmethod
-    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request):
+    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request, **kwargs):
 
         r = cls(
             url=url,
@@ -186,6 +189,7 @@ class Response(Task):
             request=request,
             body=body,
             encoding=encoding,
+            **kwargs
         )
         return r
 

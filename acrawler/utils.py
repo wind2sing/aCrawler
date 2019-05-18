@@ -35,7 +35,7 @@ async def to_asyncgen(fn, *args, **kwargs):
             yield task
     elif iscoroutinefunction(fn):
         yield await fn(*args, **kwargs)
-    elif isfunction(fn) or ismethod(fn):
+    elif callable(fn):
         yield fn(*args, **kwargs)
 
 

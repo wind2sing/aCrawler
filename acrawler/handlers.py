@@ -1,7 +1,8 @@
-from acrawler.middleware import Handler
+from acrawler.middleware import Handler, middleware
 import importlib
 import sys
-
+import functools
+import inspect
 import json
 import logging
 from acrawler.http import Request
@@ -35,6 +36,7 @@ class RequestPrepareSession(Handler):
     async def on_close(self):
         await self.session.close()
 
+
 class ResponseCheckStatus(Handler):
     family = 'Response'
 
@@ -50,14 +52,13 @@ class ResponseCheckStatus(Handler):
                     'Drop the task %s', task)
 
 
-
 class RequestMergeConfig(Handler):
     """a handler (before execution) which merge `config` to :attr:`Request.request_config`."""
     family = 'Request'
 
     def handle_before(self, request: _Request):
-        h0 = self.crawler.request_config.get('headers',{})
-        h1 = request.request_config.get('headers',{})
+        h0 = self.crawler.request_config.get('headers', {})
+        h1 = request.request_config.get('headers', {})
         h = {**h0, **h1}
         request.request_config = {
             **self.crawler.request_config, **request.request_config}
@@ -71,15 +72,38 @@ class RequestDelay(Handler):
     async def handle_after(self, request: _Request):
         await asyncio.sleep(self.crawler.config.get('DOWNLOAD_DELAY'))
 
-class ResponseAddParser(Handler):
+
+class ResponseAddCallback(Handler):
     """a handler (before execution) which add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
 
     family = 'Response'
+    callback_table = {}
 
     def handle_before(self, response: _Response):
         for parser in self.crawler.Parsers:
             response.add_callback(parser.parse)
 
+        if response.primary_family in self.callback_table:
+            for fn in self.callback_table[response.primary_family]:
+                sig = inspect.signature(fn)
+                if 'self' in sig.parameters:
+                    fn = functools.partial(fn, self.crawler)
+                response.add_callback(fn)
+
+    @classmethod
+    def callback(cls, family):
+
+        def decorator(func):
+            li = cls.callback_table.setdefault(family, [])
+            li.append(func)
+            return func
+
+        return decorator
+
+
+callback = ResponseAddCallback.callback
+""" The decorator to add callback function.
+"""
 
 class CrawlerStartAddon(Handler):
     family = 'CrawlerStart'
