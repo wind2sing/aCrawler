@@ -25,7 +25,7 @@ class ChangeExt(ResponseCheckStatus):
 
     async def handle_before(self, response):
         # we are guessing the real url of the image
-        if response.status == 404 and response.request.family == 'FileRequest':
+        if response.status == 404 and 'FileRequest' in response.request.families:
             old_url = response.request.url_str
             if 'jpg' in old_url:
                 url = old_url.replace('jpg','png')
@@ -39,7 +39,7 @@ class ChangeExt(ResponseCheckStatus):
 
 class WHCrawler(Crawler):
     config = {
-        'LOG_LEVEL': 'DEBUG'
+        'LOG_LEVEL': 'INFO'
     }
 
     middleware_config = {

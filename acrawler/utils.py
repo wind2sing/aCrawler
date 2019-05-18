@@ -6,7 +6,7 @@ from functools import partial
 from importlib import import_module
 from pathlib import Path
 from inspect import isasyncgenfunction, isgeneratorfunction, \
-    isfunction, iscoroutinefunction, ismethod, isawaitable, isgenerator
+    isfunction, iscoroutinefunction, ismethod, isgenerator
 
 
 def config_from_setting(module):
@@ -32,14 +32,13 @@ async def to_asyncgen(fn, *args, **kwargs):
         judge = fn.func
     else:
         judge = fn
-
     if isasyncgenfunction(judge):
         async for task in fn(*args, **kwargs):
             yield task
     elif isgeneratorfunction(judge):
         for task in fn(*args, **kwargs):
             yield task
-    elif isawaitable(judge):
+    elif iscoroutinefunction(judge):
         yield await fn(*args, **kwargs)
     elif callable(judge):
         yield fn(*args, **kwargs)
