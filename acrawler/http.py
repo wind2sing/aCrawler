@@ -3,12 +3,13 @@ from acrawler.utils import to_asyncgen
 import aiohttp
 import aiofiles
 import hashlib
+from urllib.parse import urljoin
 from pathlib import Path
 import traceback
 import logging
 from yarl import URL
 from pyquery import PyQuery
-from parsel import Selector
+from parsel import Selector, SelectorList
 from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod, signature
@@ -164,10 +165,9 @@ class Response(Task):
         self.callbacks = callbacks
 
         self._text = None
-   
 
         #: A pyquery instance for the response's body.
-        self.doc:PyQuery = PyQuery(self.body)
+        self.doc: PyQuery = PyQuery(self.body)
         self.doc.make_links_absolute(str(self.request.url))
         try:
             self.sel: Selector = Selector(self.doc.html())
@@ -204,6 +204,13 @@ class Response(Task):
         for callback in self.callbacks:
             async for task in to_asyncgen(callback, self):
                 yield task
+
+    def urljoin(self, a):
+        if isinstance(a, str):
+            url = a
+        elif isinstance(a, Selector):
+            url = a.attrib['href']
+        return urljoin(self.url_str, url)
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
