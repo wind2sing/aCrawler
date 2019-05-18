@@ -2,10 +2,11 @@ import sys
 import asyncio
 import logging
 import webbrowser
+from functools import partial
 from importlib import import_module
 from pathlib import Path
 from inspect import isasyncgenfunction, isgeneratorfunction, \
-    isfunction, iscoroutinefunction, ismethod
+    isfunction, iscoroutinefunction, ismethod, isawaitable, isgenerator
 
 
 def config_from_setting(module):
@@ -27,16 +28,23 @@ def merge_config(*configs):
 
 
 async def to_asyncgen(fn, *args, **kwargs):
-    if isasyncgenfunction(fn):
+    if type(fn)==partial:
+        judge = fn.func
+    else:
+        judge = fn
+
+    if isasyncgenfunction(judge):
         async for task in fn(*args, **kwargs):
             yield task
-    elif isgeneratorfunction(fn):
+    elif isgeneratorfunction(judge):
         for task in fn(*args, **kwargs):
             yield task
-    elif iscoroutinefunction(fn):
+    elif isawaitable(judge):
         yield await fn(*args, **kwargs)
-    elif callable(fn):
+    elif callable(judge):
         yield fn(*args, **kwargs)
+    else:
+        raise TypeError('Callback {} not valid!'.format(fn))
 
 
 def check_import(name: str):

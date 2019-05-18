@@ -169,6 +169,8 @@ class _Middleware(metaclass=SingletonMetaclass):
             family = '_Default'
         if priority is None:
             priority = 100
+        if position is None:
+            position = 2
         if not position in (0, 1, 2, 3):
             raise ValueError(
                 'Position for function should be a valid value: 0/1/2/3!')

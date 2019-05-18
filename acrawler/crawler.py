@@ -10,6 +10,7 @@ from acrawler.http import Request
 from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
 from acrawler.middleware import middleware
 from acrawler.utils import merge_config, config_from_setting
+from acrawler.item import DefaultItem
 
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
@@ -47,15 +48,19 @@ class Worker:
                 exception = False
                 try:
                     async for new_task in task.execute():
+                        added = False
                         if isinstance(new_task, Task):
                             if isinstance(new_task, Request):
                                 added = await self.crawler.sdl_req.produce(new_task)
                             else:
                                 added = await self.crawler.sdl.produce(new_task)
-                            if added:
-                                self.crawler.counter.task_add()
-                        if isinstance(new_task, Exception):
+                        elif isinstance(new_task, dict):
+                            item = DefaultItem(extra=new_task)
+                            added = await self.crawler.sdl.produce(item)
+                        elif isinstance(new_task, Exception):
                             exception = True
+                        if added:
+                            self.crawler.counter.task_add()
                 except Exception:
                     logger.error(traceback.format_exc())
                     exception = True

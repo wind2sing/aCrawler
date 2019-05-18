@@ -82,7 +82,8 @@ class Item(Task, collections.MutableMapping):
     def __str__(self):
         return "<%s> (%s)" % ('Task Item', self.__class__.__name__)
 
-
+class DefaultItem(Item):
+    pass
 class DebugItem(Item):
     def custom_process(self, item):
         logger.debug(item)

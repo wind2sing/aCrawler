@@ -59,10 +59,12 @@ class Request(Task):
         self.url_str = str(self.url)
         self.method = method
         self.callbacks = []
-        self.add_callback(callback)
+        if callback:
+            self.add_callback(callback)
         self.request_config = request_config if request_config else {}
         self.session = None
         self.response: Response = None
+        self._userfamily = family
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -108,7 +110,7 @@ class Request(Task):
                                                                    body=body,
                                                                    encoding=encoding,
                                                                    request=self,
-                                                                   family=self.primary_family)
+                                                                   family=self._userfamily)
                 rt = self.response
 
         except Exception as e:
@@ -165,15 +167,8 @@ class Response(Task):
         self.callbacks = callbacks
 
         self._text = None
+        self._sel: Selector= None
 
-        #: A pyquery instance for the response's body.
-        self.doc: PyQuery = PyQuery(self.body)
-        self.doc.make_links_absolute(str(self.request.url))
-        try:
-            self.sel: Selector = Selector(self.doc.html())
-        except Exception as e:
-            logger.error(e)
-            self.sel = None
 
     @classmethod
     async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request, **kwargs):
@@ -198,6 +193,15 @@ class Response(Task):
         if self._text is None:
             self._text = self.body.decode(self.encoding)
         return self._text
+    
+    @property
+    def sel(self):
+        if self._sel is None:
+            try:
+                self._sel = Selector(self.text)
+            except Exception as e:
+                logger.error(e)
+        return self._sel
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
