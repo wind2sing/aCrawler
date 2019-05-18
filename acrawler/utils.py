@@ -1,10 +1,11 @@
-from acrawler.http import Request
 import sys
 import asyncio
 import logging
 import webbrowser
 from importlib import import_module
 from pathlib import Path
+from inspect import isasyncgenfunction, isgeneratorfunction, \
+    isfunction, iscoroutinefunction, ismethod
 
 
 def config_from_setting(module):
@@ -23,6 +24,19 @@ def merge_config(*configs):
     for config in configs:
         r = {**r, **config}
     return r
+
+
+async def to_asyncgen(fn, *args, **kwargs):
+    if isasyncgenfunction(fn):
+        async for task in fn(*args, **kwargs):
+            yield task
+    elif isgeneratorfunction(fn):
+        for task in fn(*args, **kwargs):
+            yield task
+    elif iscoroutinefunction(fn):
+        yield await fn(*args, **kwargs)
+    elif isfunction(fn) or ismethod(fn):
+        yield fn(*args, **kwargs)
 
 
 def check_import(name: str):
@@ -49,7 +63,8 @@ def get_logger(name: str = 'user'):
 
 
 def redis_push_start_urls(key, url=None, address='redis://localhost'):
-    asyncio.get_event_loop().run_until_complete(redis_push_start_urls_coro(key, url, address))
+    asyncio.get_event_loop().run_until_complete(
+        redis_push_start_urls_coro(key, url, address))
 
 
 async def redis_push_start_urls_coro(key, url=None, address='redis://localhost'):

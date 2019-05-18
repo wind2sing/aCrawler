@@ -27,8 +27,8 @@ class Task:
     :param meta: additional information about a task. It can be used with
         :attr:`fingerprint`, :meth:`execute` or middleware's methods. If a task's
         execution yields new task, old task's meta should be passed to the new one.
-    :param family: Name for the kind of the instance. Used to distinguish task's type.
-        Defaults to `self.__class__.__name__`.
+    :param family: used to distinguish task's type.
+        Defaults to `__class__.__name__`.
     """
 
     def __init__(self,
@@ -41,7 +41,13 @@ class Task:
         self.dont_filter = dont_filter
         self.priority = priority
         self.meta = meta or {}
-        self.family = family or self.__class__.__name__
+
+
+        self.families = set(b.__name__ for b in self.__class__.__bases__)
+        self.families.add(self.__class__.__name__)
+        if family:
+            self.families.add(family)
+
 
         self.middleware = _middleware or middleware
         self.crawler = self.middleware.crawler

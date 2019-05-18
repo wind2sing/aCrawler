@@ -1,4 +1,6 @@
 import types
+from collections import UserList
+import bisect
 from inspect import iscoroutinefunction
 import logging
 import functools
@@ -21,9 +23,11 @@ class HandlerMetaClass(type):
     def __prepare__(metacls, name, bases, **kwargs):
         return super().__prepare__(name, bases, **kwargs)
 
-    def __new__(metacls, name, bases, namespace, family=None, position=0, priority=100, func=None, **kwargs):
+    def __new__(metacls, name, bases, namespace, family=None, position=0, priority=None, func=None, **kwargs):
         if family:
             namespace['family'] = family
+        if priority:
+            namespace['priority'] = priority
         p_d = ['on_start', 'handle_before', 'handle_after', 'on_close']
         if func:
             def meth(handler, task):
@@ -53,7 +57,6 @@ class Handler(metaclass=HandlerMetaClass):
                  crawler: _Crawler = None):
         if family:
             self.family = family
-        self.crawler = crawler
 
         self.funcs = [None] * 4
         self.is_coro = [True] * 4
@@ -71,6 +74,10 @@ class Handler(metaclass=HandlerMetaClass):
     def from_crawler(cls, crawler):
         return cls(crawler=crawler)
 
+    @property
+    def crawler(self):
+        return middleware.crawler
+
     async def on_start(self):
         pass
 
@@ -87,7 +94,7 @@ class Handler(metaclass=HandlerMetaClass):
         if position == 0 or position == 3:
             await self._call_func(position)
         elif position == 1 or position == 2:
-            if task and self.family in task.family:
+            if task and self.family in task.families:
                 await self._call_func(position, task)
 
     def set_func(self, position: int, func):
@@ -102,8 +109,19 @@ class Handler(metaclass=HandlerMetaClass):
         else:
             func(*args, **kwargs)
 
-    def __str__(self):
+    def __lt__(self, other):
+        return self.priority > other.priority
+
+    def __repr__(self):
         return '{} (family:{} priority:{})'.format(self.__class__.__name__, self.family, self.priority)
+
+
+class HandlerList(UserList):
+    def append(self, item):
+        bisect.insort(self.data, item)
+
+    def insert(self, item):
+        bisect.insort(self.data, item)
 
 
 class SingletonMetaclass(type):
@@ -121,8 +139,7 @@ class SingletonMetaclass(type):
 
 
 class _Middleware(metaclass=SingletonMetaclass):
-    handlers: List[Handler] = []
-    handlers_cls = []
+    handlers = HandlerList()
     crawler = None
 
     def register(self, family: str = None, position: int = None, priority: int = None):
@@ -142,11 +159,7 @@ class _Middleware(metaclass=SingletonMetaclass):
 
         @decorator.register(HandlerMetaClass)
         def _(cls):
-            if family:
-                cls.family = family
-            if priority:
-                cls.priority = priority
-            self.append_handler_cls(cls)
+            self.append_handler_cls(cls, family, priority)
             return cls
 
         return decorator
@@ -165,16 +178,24 @@ class _Middleware(metaclass=SingletonMetaclass):
             self.append_handler_cls(hcls)
         return func
 
-    def append_handler_cls(self, handler_cls):
-        self.handlers_cls.append(handler_cls)
+    def append_handler_cls(self, handler_cls, family: str = None, priority: int = None):
+        handler = handler_cls()
+        if family:
+            handler.family = family
+        if priority:
+            handler.priority = priority
+        self.handlers.append(handler)
         return handler_cls
+    
+    def get_handler(self, *families):
+        tmp = []
+        for family in families:
+            for hdl in self.handlers:
+                if family == hdl.family:
+                    tmp.append()
 
-    def spawn_handler(self, crawler):
-        for hcls in sorted(self.handlers_cls, key=lambda c: c.priority, reverse=True):
-            self.handlers.append(hcls.from_crawler(crawler))
-
-    def __str__(self):
-        return str([str(handler) for handler in self.handlers])
+    def __repr__(self):
+        return repr(self.handlers)
 
 
 middleware = _Middleware()

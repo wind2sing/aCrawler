@@ -41,36 +41,41 @@ class Worker:
         self._max_tries = self.crawler.max_tries
 
     async def work(self):
-        while True:
-            task = await self.sdl.consume()
-            exception = False
-            try:
-                async for new_task in task.execute():
-                    if isinstance(new_task, Task):
-                        if isinstance(new_task, Request):
-                            added = await self.crawler.sdl_req.produce(new_task)
-                        else:
-                            added = await self.crawler.sdl.produce(new_task)
-                        if added:
-                            self.crawler.counter.task_add()
-                    if isinstance(new_task, Exception):
-                        exception = True
-            except Exception:
-                logger.error(traceback.format_exc())
-                exception = True
-            if exception:
-                logger.warning(
-                    'Task failed %s for %d times.', task, task.tries)
-                if task.tries < self._max_tries:
-                    task.dont_filter = True
-                    await self.sdl.produce(task)
-                    self.crawler.counter.task_add()
-                else:
+        try:
+            while True:
+                task = await self.sdl.consume()
+                exception = False
+                try:
+                    async for new_task in task.execute():
+                        if isinstance(new_task, Task):
+                            if isinstance(new_task, Request):
+                                added = await self.crawler.sdl_req.produce(new_task)
+                            else:
+                                added = await self.crawler.sdl.produce(new_task)
+                            if added:
+                                self.crawler.counter.task_add()
+                        if isinstance(new_task, Exception):
+                            exception = True
+                except Exception:
+                    logger.error(traceback.format_exc())
+                    exception = True
+                if exception:
                     logger.warning(
-                        'Drop the task %s', task)
-                self.crawler.counter.task_done(task, 0)
-            else:
-                self.crawler.counter.task_done(task, 1)
+                        'Task failed %s for %d times.', task, task.tries)
+                    if task.tries < self._max_tries:
+                        task.dont_filter = True
+                        await self.sdl.produce(task)
+                        self.crawler.counter.task_add()
+                    else:
+                        logger.warning(
+                            'Drop the task %s', task)
+                    self.crawler.counter.task_done(task, 0)
+                else:
+                    self.crawler.counter.task_done(task, 1)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(traceback.format_exc())
 
 
 class Counter:
@@ -97,13 +102,13 @@ class Counter:
         self._finished.clear()
 
     def task_done(self, task, success: int = 1):
+        for family in task.families:
+            self.counts[family][success] += 1
         if self.always_lock:
-            self.counts[task.family][success] += 1
             self._unfinished_tasks -= 1
         else:
             if self._unfinished_tasks <= 0:
                 raise ValueError('task_done() called too many times')
-            self.counts[task.family][success] += 1
             self._unfinished_tasks -= 1
             if self._unfinished_tasks == 0:
                 self._finished.set()
@@ -142,7 +147,6 @@ class Crawler(object):
         self.middleware = middleware
         self.middleware.crawler = self
         self._add_default_middleware_handler_cls()
-        self.middleware.spawn_handler(self)
         logger.info("Initializing middleware's handlers...")
         logger.info(self.middleware)
         self.counter = Counter(loop=self.loop)
@@ -264,16 +268,6 @@ class Crawler(object):
                 mcls.priority = key
                 self.middleware.append_handler_cls(mcls)
 
-    async def _produce_tasks(self):
-        logger.info("Produce initial tasks...")
-        async for task in self.start_requests():
-            if await self.schedulers['Request'].produce(task):
-                self.counter.task_add()
-
-    async def _finish_tasks(self):
-        await self.counter.join()
-        logger.info('All tasks finished!')
-        logger.info(f'{self.counter.counts}')
 
     async def _on_start(self):
         for sdl in self.schedulers.values():
@@ -302,3 +296,5 @@ class Crawler(object):
             failure = self.counter.counts[family][0]
             logger.info(
                 f'Statistic:{family:<15} ~ success {success}, failure {failure}')
+        # logger.info(self.sdl_req.q.pq)
+        # logger.info(self.sdl.q.pq)
