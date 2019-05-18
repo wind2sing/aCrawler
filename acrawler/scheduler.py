@@ -210,14 +210,12 @@ class Scheduler:
     async def produce(self, task) -> bool:
         if task.dont_filter:
             await self.q.push(task)
-            logger.debug(f'Produce a new task {task}')
             return True
         else:
             if await self.df.seen(task):
                 return False
             else:
                 await self.q.push(task)
-                logger.debug(f'Produce a new task {task}')
                 return True
 
     async def consume(self) -> _Task:

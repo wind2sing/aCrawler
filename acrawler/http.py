@@ -112,6 +112,7 @@ class Request(Task):
                                                                    request=self,
                                                                    family=self._userfamily)
                 rt = self.response
+                logger.debug(rt)
 
         except Exception as e:
             logger.error(traceback.format_exc())

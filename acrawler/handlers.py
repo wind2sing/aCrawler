@@ -174,8 +174,8 @@ class ItemToMongo(Handler):
     col_name = ''
 
     async def on_start(self):
-        import motor.motor_asyncio
-        self.client = motor.motor_asyncio.AsyncIOMotorClient(self.address)
+        mo = check_import('motor.motor_asyncio')
+        self.client = mo.AsyncIOMotorClient(self.address)
         self.db = self.client[self.db_name]
         self.col = self.db[self.col_name]
         logger.info(f'Connecting to MongoDB... {self.col}')
