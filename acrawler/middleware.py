@@ -1,6 +1,7 @@
-from collections import defaultdict
+import types
 from inspect import iscoroutinefunction
 import logging
+import functools
 
 # Typing
 import acrawler
@@ -20,7 +21,7 @@ class HandlerMetaClass(type):
     def __prepare__(metacls, name, bases, **kwargs):
         return super().__prepare__(name, bases, **kwargs)
 
-    def __new__(metacls, name, bases, namespace, family=None, position=0, func=None, **kwargs):
+    def __new__(metacls, name, bases, namespace, family=None, position=0, priority=100, func=None, **kwargs):
         if family:
             namespace['family'] = family
         p_d = ['on_start', 'handle_before', 'handle_after', 'on_close']
@@ -101,6 +102,9 @@ class Handler(metaclass=HandlerMetaClass):
         else:
             func(*args, **kwargs)
 
+    def __str__(self):
+        return '{} (family:{} priority:{})'.format(self.__class__.__name__, self.family, self.priority)
+
 
 class SingletonMetaclass(type):
     def __init__(self, *args, **kwargs):
@@ -121,46 +125,63 @@ class _Middleware(metaclass=SingletonMetaclass):
     handlers_cls = []
     crawler = None
 
-    def before_execute(self, family):
-        def decorator(func):
-            self.append_func(family, 1, func)
+    def register(self, family: str = None, position: int = None, priority: int = None):
+        """The factory method for creating decorators to register handlers to middleware.
+        Singledispathed for differenct types of targets.
+        """
+        @functools.singledispatch
+        def decorator(target):
+            return target
 
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
+        @decorator.register(types.FunctionType)
+        def _(func):
+            nonlocal priority
+            nonlocal family
+            self.append_func(func, family, position, priority)
+            return func
 
-            return wrapper
+        @decorator.register(HandlerMetaClass)
+        def _(cls):
+            if family:
+                cls.family = family
+            if priority:
+                cls.priority = priority
+            self.append_handler_cls(cls)
+            return cls
 
         return decorator
 
-    def after_execute(self, family):
-        def decorator(func):
-            self.append_func(family, 2, func)
-
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            return wrapper
-
-        return decorator
-
-    def append_func(self, family: str, position: int, func):
-        hcls = HandlerMetaClass(
-            'ShortHandler', (Handler,), {}, family=family, position=position, func=func)
-        self.append_handler_cls(hcls)
+    def append_func(self, func, family: str = None, position: int = None, priority: int = None):
+        if family is None:
+            family = '_Default'
+        if priority is None:
+            priority = 100
+        if not position in (0, 1, 2, 3):
+            raise ValueError(
+                'Position for function should be a valid value: 0/1/2/3!')
+        else:
+            hcls = HandlerMetaClass(
+                'ShortHandler', (Handler,), {}, family=family, position=position, priority=priority, func=func)
+            self.append_handler_cls(hcls)
+        return func
 
     def append_handler_cls(self, handler_cls):
         self.handlers_cls.append(handler_cls)
+        return handler_cls
 
     def spawn_handler(self, crawler):
-        for hcls in sorted(self.handlers_cls, key=lambda c: c.priority):
+        for hcls in sorted(self.handlers_cls, key=lambda c: c.priority, reverse=True):
             self.handlers.append(hcls.from_crawler(crawler))
 
     def __str__(self):
-        return str([handler.__class__.__name__ for handler in self.handlers])
+        return str([str(handler) for handler in self.handlers])
+
 
 middleware = _Middleware()
 """The singleton instance to manege middlewares.
 
-Use :meth:`@middleware.before_execute` or :meth:`@middleware.after_execute` as a decorator.
+Use :meth:`@middleware.register` as a decorator.
 The decorator receive a parameter as the family key to store middleware functions.
 """
+
+register = middleware.register

@@ -1,4 +1,4 @@
-from acrawler import Crawler, Request, Response, middleware
+from acrawler import Crawler, Request, Response, middleware, register
 from acrawler.http import FileRequest
 from acrawler.utils import open_html
 from acrawler.handlers import ResponseCheckStatus
@@ -17,6 +17,7 @@ def img_dir():
         IMG_DIR.mkdir()
     return IMG_DIR
 
+@register()
 class ChangeExt(ResponseCheckStatus):
 
     async def on_start(self):
@@ -38,13 +39,12 @@ class ChangeExt(ResponseCheckStatus):
 
 class WHCrawler(Crawler):
     config = {
-        'LOG_LEVEL': 'INFO'
+        'LOG_LEVEL': 'DEBUG'
     }
 
     middleware_config = {
         'acrawler.handlers.ResponseCheckStatus': 0, # disable it
     }
-    middleware.append_handler_cls(ChangeExt)
     
     max_requests = 10
     
