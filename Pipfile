@@ -12,10 +12,10 @@ autopep8 = "*"
 
 [packages]
 aiohttp = "*"
-pyquery = "*"
 uvloop = "*"
 parsel = "*"
 aiofiles = "*"
+cchardet = "*"
 
 [requires]
 python_version = "3.6"
