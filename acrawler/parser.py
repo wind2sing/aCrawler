@@ -92,7 +92,7 @@ class Parser:
     def parse_items(self, response):
         """Get items from all selectors in the loader."""
 
-        for sel in self.selectors_loader(response.text):
+        for sel in self.selectors_loader(response.doc.html()):
             if self.item_type:
                 if issubclass(self.item_type, ParselItem):
                     yield self.item_type(sel, extra=self.extra)

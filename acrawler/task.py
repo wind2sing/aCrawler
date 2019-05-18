@@ -2,6 +2,7 @@ import time
 import logging
 from inspect import iscoroutinefunction
 from acrawler.middleware import middleware
+from acrawler.utils import to_asyncgen
 import asyncio
 
 
@@ -158,10 +159,9 @@ class CrawlerStart(SpecialTask):
 
     async def _produce_tasks(self):
         logger.info("Produce initial tasks...")
-        async for task in self.crawler.start_requests():
+        async for task in to_asyncgen(self.crawler.start_requests):
             if await self.crawler.schedulers['Request'].produce(task):
                 self.crawler.counter.task_add()
-
 
 class CrawlerFinish(SpecialTask):
 

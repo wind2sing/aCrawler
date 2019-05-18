@@ -1,4 +1,5 @@
 from acrawler.task import Task
+from acrawler.utils import to_asyncgen
 import aiohttp
 import aiofiles
 import hashlib
@@ -8,7 +9,7 @@ import logging
 from yarl import URL
 from pyquery import PyQuery
 from parsel import Selector
-
+from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod
 # Typing
@@ -87,6 +88,7 @@ class Request(Task):
     async def fetch(self):
         """Sends a request and return the response as a task."""
         to_close = False
+
         if self.session is None:
             self.session = aiohttp.ClientSession()
             to_close = True
@@ -95,12 +97,7 @@ class Request(Task):
                     self.method, self.url, **self.request_config) as cresp:
 
                 body = await cresp.read()
-                text = None
-                try:
-                    text = await cresp.text()
-                except Exception as e:
-                    logger.warning("Decoding body failed: {}".format(e))
-                    text = str(body)
+                encoding = cresp.get_encoding()
 
                 self.response = await Response.from_ClientResponse(url=cresp.url,
                                                                    status=cresp.status,
@@ -108,7 +105,7 @@ class Request(Task):
                                                                    headers=cresp.headers,
                                                                    history=cresp.history,
                                                                    body=body,
-                                                                   text=text,
+                                                                   encoding=encoding,
                                                                    request=self)
                 rt = self.response
 
@@ -146,7 +143,7 @@ class Response(Task):
                  history: _History,
                  request: Request,
                  body: bytes,
-                 text: str = None,
+                 encoding: str,
                  callbacks: _Functions = None,
                  meta: dict = None,
                  ):
@@ -158,19 +155,25 @@ class Response(Task):
         self.headers = headers
         self.history = history
         self.body = body
-        self.text = text
+        self.encoding = encoding
         self.meta = meta
         self.request = request
         self.callbacks = callbacks
 
-        self.sel: Selector = Selector(self.text)
+        self._text = None
+   
 
         #: A pyquery instance for the response's body.
-        self.doc = PyQuery(self.body)
+        self.doc:PyQuery = PyQuery(self.body)
         self.doc.make_links_absolute(str(self.request.url))
+        try:
+            self.sel: Selector = Selector(self.doc.html())
+        except Exception as e:
+            logger.error(e)
+            self.sel = None
 
     @classmethod
-    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, text, request: Request):
+    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request):
 
         r = cls(
             url=url,
@@ -182,23 +185,21 @@ class Response(Task):
             callbacks=request.callbacks,
             request=request,
             body=body,
-            text=text,
+            encoding=encoding,
         )
         return r
+
+    @property
+    def text(self):
+        if self._text is None:
+            self._text = self.body.decode(self.encoding)
+        return self._text
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
         for callback in self.callbacks:
-            if isasyncgenfunction(callback):
-                async for task in callback(self):
-                    yield task
-            elif isgeneratorfunction(callback):
-                for task in callback(self):
-                    yield task
-            elif iscoroutinefunction(callback):
-                yield await callback(self)
-            elif ismethod(callback) or isfunction(callback):
-                yield callback(self)
+            async for task in to_asyncgen(callback, self):
+                yield task
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -230,12 +231,12 @@ class FileRequest(Request):
     file_name_key = '_fname'
     file_name = ''
 
-    def __init__(self, url, callback=None, method='GET', request_config=None, encoding=None, dont_filter=False, meta=None, priority=0, session=None, family=None):
+    def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None):
         if not callback:
             callback = file_save_callback
 
-        super().__init__(url, callback=callback, method=method, request_config=request_config, encoding=encoding,
-                         dont_filter=dont_filter, meta=meta, priority=priority, session=session, family=family)
+        super().__init__(url, callback=callback, method=method, request_config=request_config,
+                         dont_filter=dont_filter, meta=meta, priority=priority, family=family)
 
     async def _execute(self, **kwargs):
         if self.file_dir_key in self.meta:
