@@ -174,8 +174,3 @@ class CrawlerFinish(SpecialTask):
 
     async def _wait_finished(self):
         await self.crawler.counter.join()
-        for tasker in self.crawler.taskers:
-            tasker.cancel()
-
-        logger.info('All tasks finished!')
-        logger.info(f'{self.crawler.counter.counts}')

@@ -1,5 +1,6 @@
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
+import asyncio
 import aiohttp
 import aiofiles
 import hashlib
@@ -115,9 +116,7 @@ class Request(Task):
                                                                    family=self._userfamily)
                 rt = self.response
                 logger.debug(rt)
-
         except Exception as e:
-            logger.error(traceback.format_exc())
             rt = e
         finally:
             if to_close:

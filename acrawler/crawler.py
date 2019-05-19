@@ -3,6 +3,7 @@ import asyncio
 import logging
 import time
 import traceback
+import signal
 
 
 from acrawler.task import Task, CrawlerStart, CrawlerFinish
@@ -11,7 +12,6 @@ from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
 from acrawler.middleware import middleware
 from acrawler.utils import merge_config, config_from_setting
 from acrawler.item import DefaultItem
-
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from collections import defaultdict
@@ -40,13 +40,16 @@ class Worker:
         self.crawler = crawler
         self.sdl = sdl or Scheduler()
         self._max_tries = self.crawler.max_tries
+        self.current_task = None
 
     async def work(self):
         try:
             while True:
-                task = await self.sdl.consume()
+                self.current_task = await self.sdl.consume()
+                task = self.current_task
                 exception = False
                 try:
+                    added = False
                     async for new_task in task.execute():
                         added = False
                         if isinstance(new_task, Task):
@@ -57,13 +60,19 @@ class Worker:
                         elif isinstance(new_task, dict):
                             item = DefaultItem(extra=new_task)
                             added = await self.crawler.sdl.produce(item)
-                        elif isinstance(new_task, Exception):
-                            exception = True
                         if added:
                             self.crawler.counter.task_add()
-                except Exception:
+
+                        if isinstance(new_task, Exception):
+                            raise new_task
+
+                except asyncio.CancelledError as e:
+                    raise e
+                except Exception as e:
+                    logger.error('{} execution faces {}'.format(task, e))
                     logger.error(traceback.format_exc())
                     exception = True
+
                 if exception:
                     logger.warning(
                         'Task failed %s for %d times.', task, task.tries)
@@ -77,8 +86,14 @@ class Worker:
                     self.crawler.counter.task_done(task, 0)
                 else:
                     self.crawler.counter.task_done(task, 1)
-        except asyncio.CancelledError:
-            pass
+                self.current_task = None
+        except asyncio.CancelledError as e:
+            if self.current_task:
+                self.current_task.tries -= 1
+                task.dont_filter = True
+                logger.info('During shutdown, put back {}'.format(task))
+                await self.sdl.produce(task)
+            raise e
         except Exception as e:
             logger.error(traceback.format_exc())
 
@@ -158,8 +173,14 @@ class Crawler(object):
 
     def run(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
+        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        for s in signals:
+            self.loop.add_signal_handler(
+                s, lambda s=s: self.loop.create_task(self.ashutdown(s)))
 
-        return self.loop.run_until_complete(self.arun())
+        self.loop.create_task(self.arun())
+        self.loop.run_forever()
+            
 
     async def arun(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
@@ -172,8 +193,7 @@ class Crawler(object):
         await CrawlerFinish(self).execute()
         await self._on_close()
         logger.info("End crawling...")
-        self._log_status()
-        return True
+        await self.ashutdown()
 
     async def manager(self):
         """Manages crawler's most important work.
@@ -273,7 +293,6 @@ class Crawler(object):
                 mcls.priority = key
                 self.middleware.append_handler_cls(mcls)
 
-
     async def _on_start(self):
         for sdl in self.schedulers.values():
             await sdl.start()
@@ -287,13 +306,28 @@ class Crawler(object):
         logger.info("Call on_close()...")
         for handler in self.middleware.handlers:
             await handler.handle(3)
+    
+    async def ashutdown(self, signal=None):
+        logger.info('Start shutdown...')
+        for tasker in self.taskers:
+            tasker.cancel()
+
+        for tasker in self.taskers:
+            try:
+                await tasker
+            except asyncio.CancelledError:
+                pass
+        
+        await self._log_status()
+        logger.info('Shutdown crawler gracefully!')
+        self.loop.stop()
 
     async def _log_status_timer(self):
         while True:
             await asyncio.sleep(20)
-            self._log_status()
+            await self._log_status()
 
-    def _log_status(self):
+    async def _log_status(self):
         time_delta = time.time() - self.start_time
         logger.info(f'Statistic: working {time_delta:.2f}s')
         for family in self.counter.counts.keys():
@@ -301,5 +335,5 @@ class Crawler(object):
             failure = self.counter.counts[family][0]
             logger.info(
                 f'Statistic:{family:<15} ~ success {success}, failure {failure}')
-        # logger.info(self.sdl_req.q.pq)
-        # logger.info(self.sdl.q.pq)
+        logger.info('Normal  Scheduler tasks left:{}'.format(await self.sdl.q.get_length()))
+        logger.info('Request Scheduler tasks left:{}'.format(await self.sdl_req.q.get_length()))
