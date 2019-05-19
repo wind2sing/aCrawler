@@ -4,6 +4,8 @@ import logging
 import time
 import traceback
 import signal
+import pickle
+from pathlib import Path
 
 
 from acrawler.task import Task, CrawlerStart, CrawlerFinish
@@ -14,7 +16,6 @@ from acrawler.utils import merge_config, config_from_setting
 from acrawler.item import DefaultItem
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
-from collections import defaultdict
 from pprint import pformat
 
 try:
@@ -100,7 +101,7 @@ class Worker:
 
 class Counter:
     def __init__(self, loop=None):
-        self.counts = defaultdict(lambda: [0, 0])
+        self.counts = {}
         self._unfinished_tasks = 0
         self._finished = asyncio.Event(loop=loop)
         self._finished.set()
@@ -123,7 +124,8 @@ class Counter:
 
     def task_done(self, task, success: int = 1):
         for family in task.families:
-            self.counts[family][success] += 1
+            rc = self.counts.setdefault(family, [0, 0])
+            rc[success] += 1
         if self.always_lock:
             self._unfinished_tasks -= 1
         else:
@@ -132,6 +134,16 @@ class Counter:
             self._unfinished_tasks -= 1
             if self._unfinished_tasks == 0:
                 self._finished.set()
+
+    def __getstate__(self):
+        state = self.__dict__
+        state.pop('_finished', None)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.__dict__['_finished'] = asyncio.Event()
+        self.__dict__['_finished'].set()
 
 
 class Crawler(object):
@@ -161,6 +173,8 @@ class Crawler(object):
         self._form_config()
         self._logging_config()
 
+        self.counter: Counter = None
+        self.shedulers: Dict[str, 'Scheduler'] = {}
         self._create_schedulers()
         self.workers: List['Worker'] = []
 
@@ -169,18 +183,16 @@ class Crawler(object):
         self._add_default_middleware_handler_cls()
         logger.info("Initializing middleware's handlers...")
         logger.info(self.middleware)
-        self.counter = Counter(loop=self.loop)
 
     def run(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
-        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        signals = (signal.SIGINT, )
         for s in signals:
             self.loop.add_signal_handler(
                 s, lambda s=s: self.loop.create_task(self.ashutdown(s)))
 
-        self.loop.create_task(self.arun())
+        self.run_task = self.loop.create_task(self.arun())
         self.loop.run_forever()
-            
 
     async def arun(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
@@ -208,12 +220,14 @@ class Crawler(object):
             logger.info('Create %d request workers', self.max_requests)
             logger.info('Create %d workers', self.max_workers)
             self.start_time = time.time()
-            self.taskers = {'Request':[], 'Default':[]}
+            self.taskers = {'Request': [], 'Default': []}
             for worker in self.workers:
                 if worker.sdl is self.sdl_req:
-                    self.taskers['Request'].append(self.loop.create_task(worker.work()))
+                    self.taskers['Request'].append(
+                        self.loop.create_task(worker.work()))
                 else:
-                    self.taskers['Default'].append(self.loop.create_task(worker.work()))
+                    self.taskers['Default'].append(
+                        self.loop.create_task(worker.work()))
 
         except Exception:
             logger.error(traceback.format_exc())
@@ -262,7 +276,9 @@ class Crawler(object):
             f'middleware_config:\n {pformat(self.middleware_config)}')
 
     def _create_schedulers(self):
+        self.counter = Counter(loop=self.loop)
         self.redis_enable = self.config.get('REDIS_ENABLE', False)
+        self.persistent = self.config.get('PERSISTENT', False)
 
         request_df = None
         request_q = None
@@ -275,12 +291,15 @@ class Crawler(object):
                 address=self.config.get('REDIS_ADDRESS'),
                 q_key=self.config.get('REDIS_QUEUE_KEY')
             )
-        self.schedulers: Dict[str, 'Scheduler'] = {
+
+        self.schedulers = {
             'Request': Scheduler(df=request_df, q=request_q),
             'Default': Scheduler()
         }
         self.sdl = self.schedulers['Default']
         self.sdl_req = self.schedulers['Request']
+
+        self._persist_load()
 
     def _add_default_middleware_handler_cls(self):
         for kv in self.middleware_config.items():
@@ -306,25 +325,70 @@ class Crawler(object):
         logger.info("Call on_close()...")
         for handler in self.middleware.handlers:
             await handler.handle(3)
-    
-    async def ashutdown(self, signal=None):
-        logger.info('Start shutdown...')
-        for tasker in self.taskers['Request']:
-            tasker.cancel()
-        
-        while await self.sdl.q.get_length() != 0:
-            asyncio.sleep(0.5)
 
-        for tasker in self.taskers['Request']:
-            try:
-                await tasker
-            except asyncio.CancelledError:
-                pass
-        await self._log_status()
-        await self._on_close()
-        logger.info('Shutdown crawler gracefully!')
-        logger.info("End crawling...")
-        self.loop.stop()
+    async def ashutdown(self, signal=None):
+        try:
+            logger.info('Start shutdown...')
+            for tasker in self.taskers['Request']:
+                tasker.cancel()
+
+            while await self.sdl.q.get_length() != 0:
+                asyncio.sleep(0.5)
+
+            for tasker in self.taskers['Request']:
+                try:
+                    await tasker
+                except asyncio.CancelledError:
+                    pass
+            await self._log_status()
+            await self._on_close()
+            self._persist_save()
+            if signal:
+                self.run_task.cancel()
+
+            logger.info('Shutdown crawler gracefully!')
+            logger.info("End crawling...")
+            self.loop.stop()
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            logger.warning('Errors during shutdown')
+            self.loop.stop()
+
+    def _persist_load(self):
+        if self.persistent and not self.redis_enable:
+            tag = self.config.get('PERSISTENT_NAME', None) or self.__class__.__name__
+            fname = '.' + tag
+            self.fi_tasks: Path = Path.cwd() / (fname + '.tasks')
+            self.fi_df: Path =  Path.cwd() / (fname + '.df')
+            if self.fi_tasks.exists():
+                with open(self.fi_tasks, 'rb') as f:
+                    tasks = pickle.load(f)
+                logger.info('Load {} tasks from local file {}.'.format(len(tasks), self.fi_tasks))
+                for t in tasks:
+                    self.sdl_req.q.push_nowait(t)
+                    self.counter.task_add()
+            if self.fi_df.exists():
+                with open(self.fi_df, 'rb') as f:
+                    self.sdl_req.df = pickle.load(f)
+                logger.info('Load Dupefilter from {}'.format(self.fi_df))
+
+    def _persist_save(self):
+        if self.persistent and not self.redis_enable:
+            tasks = []
+            with open(self.fi_tasks, 'wb') as f:
+                while(1):
+                    try:
+                        t = self.sdl_req.q.pop_nowait()
+                        tasks.append(t)
+                    except asyncio.QueueEmpty:
+                        break
+                pickle.dump(tasks, f)
+            logger.info('Dump {} tasks into local file {}.'.format(len(tasks), self.fi_tasks))
+
+            with open(self.fi_df, 'wb') as f:
+                pickle.dump(self.sdl_req.df, f)
+            logger.info('Dump Dupefilter to {}'.format(self.fi_df))
+
 
     async def _log_status_timer(self):
         while True:

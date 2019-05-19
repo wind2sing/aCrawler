@@ -107,22 +107,28 @@ class BaseQueue:
         pass
 
     async def push(self, task):
-        pass
+        raise NotImplementedError
+    
+    def push_nowait(self, task):
+        raise NotImplementedError
 
     async def pop(self):
-        pass
+        raise NotImplementedError
+    
+    def pop_nowait(self):
+        raise NotImplementedError
 
     async def get_length(self):
-        pass
+        raise NotImplementedError
 
     async def clear(self):
-        pass
+        raise NotImplementedError
 
     async def close(self):
         pass
 
     def serialize(self, task):
-        return pickle.dumps(task)
+        return pickle.dumps(task) 
 
     def deserialize(self, message)->_Task:
         return pickle.loads(message)
@@ -137,9 +143,15 @@ class AsyncPQ(BaseQueue):
 
     async def push(self, task: _Task):
         return await self.pq.put((-task.score, task))
+    
+    def push_nowait(self, task):
+        return self.pq.put_nowait((-task.score, task))
 
     async def pop(self):
         return (await self.pq.get())[1]
+
+    def pop_nowait(self):
+        return self.pq.get_nowait()[1]
 
     async def get_length(self):
         return self.pq.qsize()

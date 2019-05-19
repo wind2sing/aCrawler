@@ -11,8 +11,7 @@ MIDDLEWARE_CONFIG = {
     'acrawler.handlers.RequestDelay': 700,
     'acrawler.handlers.ResponseAddCallback': 900,
     'acrawler.handlers.ResponseCheckStatus':800,
-    'acrawler.handlers.CrawlerStartAddon': 900,
-    'acrawler.handlers.CrawlerFinishAddon': 900
+    'acrawler.handlers.CrawlerStartAddon': 1000,
 }
 
 DOWNLOAD_DELAY = 0
@@ -27,3 +26,6 @@ REDIS_START_KEY = 'acrawler:start_urls'
 REDIS_QUEUE_KEY = 'acrawler:queue'
 REDIS_DF_KEY = 'acrawler:df'
 REDIS_ADDRESS = 'redis://localhost'
+
+PERSISTENT = False
+PERSISTENT_NAME = None

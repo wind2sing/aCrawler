@@ -4,6 +4,7 @@ import sys
 import functools
 import inspect
 import json
+import pickle
 import logging
 from acrawler.http import Request
 from acrawler.utils import check_import
@@ -22,6 +23,7 @@ _Crawler = 'acrawler.crawler.Crawler'
 
 logger = logging.getLogger(__name__)
 
+# Request Part
 
 class RequestPrepareSession(Handler):
     family = 'Request'
@@ -81,6 +83,8 @@ class RequestDelay(Handler):
         await asyncio.sleep(self.crawler.config.get('DOWNLOAD_DELAY'))
 
 
+# Response Part
+
 class ResponseAddCallback(Handler):
     """a handler (before execution) which add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
 
@@ -113,36 +117,7 @@ callback = ResponseAddCallback.callback
 """ The decorator to add callback function.
 """
 
-class CrawlerStartAddon(Handler):
-    family = 'CrawlerStart'
-
-    async def on_start(self):
-        if self.crawler.redis_enable:
-            aioredis = check_import('aioredis')
-            self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
-        else:
-            self.redis = None
-
-    async def handle_after(self, task):
-        if self.crawler.redis_enable:
-            self.crawler.loop.create_task(self._next_request_from_redis())
-
-    async def _next_request_from_redis(self):
-        while True:
-            _, url = await self.redis.blpop(self.crawler.config.get('REDIS_START_KEY'))
-            task = Request(str(url, encoding="utf-8"))
-            if await self.crawler.schedulers['Request'].produce(task):
-                self.crawler.counter.task_add()
-
-
-class CrawlerFinishAddon(Handler):
-    family = 'CrawlerFinish'
-
-    async def on_start(self):
-        if self.crawler.redis_enable:
-            self.crawler.counter.lock_always()
-
-
+# Item Part
 class ItemDebug(Handler):
     family = 'Item'
 
@@ -193,3 +168,28 @@ class ItemToMongo(Handler):
 
     async def on_close(self):
         self.client.close()
+
+
+# Others
+
+class CrawlerStartAddon(Handler):
+    family = 'CrawlerStart'
+
+    async def on_start(self):
+        if self.crawler.redis_enable:
+            aioredis = check_import('aioredis')
+            self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
+            self.crawler.counter.lock_always()
+        else:
+            self.redis = None
+
+    async def handle_after(self, task):
+        if self.crawler.redis_enable:
+            self.crawler.loop.create_task(self._next_request_from_redis())
+
+    async def _next_request_from_redis(self):
+        while True:
+            _, url = await self.redis.blpop(self.crawler.config.get('REDIS_START_KEY'))
+            task = Request(str(url, encoding="utf-8"))
+            if await self.crawler.schedulers['Request'].produce(task):
+                self.crawler.counter.task_add()
