@@ -1,6 +1,7 @@
 import logging
 import collections
 from acrawler.task import Task
+from acrawler.utils import to_asyncgen
 from parsel import Selector
 from inspect import isfunction, iscoroutinefunction, ismethod, isgeneratorfunction
 
@@ -64,15 +65,18 @@ class Item(Task, collections.MutableMapping):
         return d
 
     async def _execute(self, **kwargs) -> _TaskGenerator:
-        for task in self._process():
+        async for task in self._process():
             yield task
         yield None
 
-    def _process(self):
-        if isgeneratorfunction(self.custom_process):
-            yield from self.custom_process(self.content)
-        elif ismethod(self.custom_process) or isfunction(self.custom_process):
-            yield self.custom_process(self.content)
+    async def _process(self):
+        # if isgeneratorfunction(self.custom_process):
+        #     yield from self.custom_process(self.content)
+        # elif ismethod(self.custom_process) or isfunction(self.custom_process):
+        #     yield self.custom_process(self.content)
+
+        async for task in to_asyncgen(self.custom_process, self.content):
+            yield task
 
     def custom_process(self, content):
         """can be rewritten for futhur processing of the item.

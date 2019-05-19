@@ -1,6 +1,6 @@
 import time
 import logging
-from inspect import iscoroutinefunction
+from inspect import iscoroutinefunction, isabstract
 from acrawler.middleware import middleware
 from acrawler.utils import to_asyncgen
 import asyncio
@@ -16,6 +16,7 @@ _Function = Callable
 _TaskGenerator = AsyncGenerator['Task', None]
 
 logger = logging.getLogger(__name__)
+
 
 class Task:
     """Task is scheduled by crawler to execute.
@@ -43,9 +44,7 @@ class Task:
         self.priority = priority
         self.meta = meta or {}
 
-
-        self.families = set(b.__name__ for b in self.__class__.__bases__)
-        self.families.add(self.__class__.__name__)
+        self.families = set(cls.__name__ for cls in self.__class__.mro() if not isabstract(cls))
         if family:
             self.families.add(family)
         self.primary_family = family or self.__class__.__name__
@@ -78,7 +77,7 @@ class Task:
         return self._fingerprint()
 
     async def execute(self,
-                      **kwargs: Any)->_TaskGenerator:
+                      **kwargs: Any) -> _TaskGenerator:
         """main entry for a task to start working.
 
         :param middleware: needed to call custom functions before or after executing work.
@@ -97,7 +96,7 @@ class Task:
         for handler in self.middleware.handlers:
             await handler.handle(position=2, task=self)
 
-    async def _execute(self, **kwargs: Any)->_TaskGenerator:
+    async def _execute(self, **kwargs: Any) -> _TaskGenerator:
         """should be rewritten as a generator in the subclass."""
         raise NotImplementedError
 
@@ -135,7 +134,7 @@ class SpecialTask(Task):
     """Task that is special and not generate new tasks.
     """
     async def execute(self,
-                      **kwargs: Any)->None:
+                      **kwargs: Any) -> None:
         self.exetime = time.time()
         self.tries += 1
 
@@ -162,6 +161,7 @@ class CrawlerStart(SpecialTask):
         async for task in to_asyncgen(self.crawler.start_requests):
             if await self.crawler.schedulers['Request'].produce(task):
                 self.crawler.counter.task_add()
+
 
 class CrawlerFinish(SpecialTask):
 
