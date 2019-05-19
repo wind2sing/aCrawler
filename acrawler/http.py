@@ -42,6 +42,7 @@ class Request(Task):
                  callback: _Functions = None,
                  method: str = 'GET',
                  request_config: dict = None,
+                 status_allowed: list = None,
 
                  # Below are paras for parent class
                  dont_filter: bool = False,
@@ -58,6 +59,7 @@ class Request(Task):
         self.url = URL(url)
         self.url_str = str(self.url)
         self.method = method
+        self.status_allowed = status_allowed
         self.callbacks = []
         if callback:
             self.add_callback(callback)
@@ -166,10 +168,11 @@ class Response(Task):
         self.meta = meta
         self.request = request
         self.callbacks = callbacks
+        self.ok = (self.status == 200) or (self.request.status_allowed == []) or (
+            (self.request.status_allowed) and (self.status in self.request.status_allowed))
 
         self._text = None
-        self._sel: Selector= None
-
+        self._sel: Selector = None
 
     @classmethod
     async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request, **kwargs):
@@ -192,9 +195,13 @@ class Response(Task):
     @property
     def text(self):
         if self._text is None:
-            self._text = self.body.decode(self.encoding)
+            try:
+                self._text = self.body.decode(self.encoding)
+            except Exception as e:
+                logger.debug('({}) {}'.format(self.url_str, e))
+                self._text = str(self.body)
         return self._text
-    
+
     @property
     def sel(self):
         if self._sel is None:

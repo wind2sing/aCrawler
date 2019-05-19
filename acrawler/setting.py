@@ -6,18 +6,21 @@ REQUEST_CONFIG = {
 
 
 MIDDLEWARE_CONFIG = {
-    'acrawler.handlers.RequestPrepareSession': 100,
-    'acrawler.handlers.ResponseAddCallback': 100,
-    'acrawler.handlers.RequestMergeConfig': 100,
-    'acrawler.handlers.RequestDelay': 100,
-    'acrawler.handlers.ResponseCheckStatus':100,
-    'acrawler.handlers.CrawlerStartAddon': 100,
-    'acrawler.handlers.CrawlerFinishAddon': 100
+    'acrawler.handlers.RequestPrepareSession': 900,
+    'acrawler.handlers.RequestMergeConfig': 800,
+    'acrawler.handlers.RequestDelay': 700,
+    'acrawler.handlers.ResponseAddCallback': 900,
+    'acrawler.handlers.ResponseCheckStatus':800,
+    'acrawler.handlers.CrawlerStartAddon': 900,
+    'acrawler.handlers.CrawlerFinishAddon': 900
 }
 
 DOWNLOAD_DELAY = 0
 
 LOG_LEVEL = 'INFO'
+
+STATUS_ALLOWED = None
+
 
 REDIS_ENABLE = False
 REDIS_START_KEY = 'acrawler:start_urls'

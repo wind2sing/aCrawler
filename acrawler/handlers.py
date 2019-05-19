@@ -39,17 +39,25 @@ class RequestPrepareSession(Handler):
 
 class ResponseCheckStatus(Handler):
     family = 'Response'
+    def on_start(self):
+        self.status_allowed = self.crawler.config.get('STATUS_ALLOWED')
+        self.allow_all = (self.status_allowed == [])
+        self.deny_all = self.status_allowed is None
 
     async def handle_before(self, response):
-        if response.status >= 400:
-            logger.error('Task failed {}'.format(response))
-            task = response.request
-            if task.tries < self.crawler.max_tries:
-                task.dont_filter = True
-                await self.crawler.add_task(response.request)
-            else:
-                logger.warning(
-                    'Drop the task %s', task)
+        if self.allow_all:
+            return 
+        if response.status !=200:
+            if self.deny_all or not response.status in self.status_allowed:
+                if not response.ok:
+                    logger.error('Task failed {}'.format(response))
+                    task = response.request
+                    if task.tries < self.crawler.max_tries:
+                        task.dont_filter = True
+                        await self.crawler.add_task(response.request)
+                    else:
+                        logger.warning(
+                            'Drop the task %s', task)
 
 
 class RequestMergeConfig(Handler):
