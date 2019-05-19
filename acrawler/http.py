@@ -67,7 +67,7 @@ class Request(Task):
         self.request_config = request_config if request_config else {}
         self.session = None
         self.response: Response = None
-        self._userfamily = family
+        self.httpfamily = family
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -113,7 +113,7 @@ class Request(Task):
                                                                    body=body,
                                                                    encoding=encoding,
                                                                    request=self,
-                                                                   family=self._userfamily)
+                                                                   family=self.httpfamily)
                 rt = self.response
                 logger.debug(rt)
         except Exception as e:
@@ -125,6 +125,11 @@ class Request(Task):
 
     def __str__(self):
         return "<%s> (%s)" % ('Task Request', self.url)
+
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.pop('session', None)
+        return state
 
 
 class Response(Task):
@@ -253,12 +258,12 @@ class FileRequest(Request):
     file_name_key = '_fname'
     file_name = ''
 
-    def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None):
+    def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
         if not callback:
             callback = file_save_callback
 
         super().__init__(url, callback=callback, method=method, request_config=request_config,
-                         dont_filter=dont_filter, meta=meta, priority=priority, family=family)
+                         dont_filter=dont_filter, meta=meta, priority=priority, family=family, *args, **kwargs)
 
     async def _execute(self, **kwargs):
         if self.file_dir_key in self.meta:

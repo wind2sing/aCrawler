@@ -106,8 +106,8 @@ class Task:
 
     def __getstate__(self):
         state = self.__dict__
-        del state['middleware']
-        del state['crawler']
+        state.pop('middleware', None)
+        state.pop('crawler', None)
         return state
 
     def __setstate__(self, state):

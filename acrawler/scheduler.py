@@ -132,6 +132,7 @@ class AsyncPQ(BaseQueue):
     """A Priority Queue that uses vanilla :class:`asyncio.PriorityQueue` to store tasks."""
 
     def __init__(self):
+        super().__init__()
         self.pq = asyncio.PriorityQueue()
 
     async def push(self, task: _Task):
@@ -149,6 +150,7 @@ class AsyncPQ(BaseQueue):
 
 class RedisPQ(BaseQueue):
     def __init__(self, address='redis://localhost', q_key='acrawler:queue'):
+        super().__init__()
         self.address = address
         self.q_key = q_key
         self.redis = None
@@ -210,12 +212,14 @@ class Scheduler:
     async def produce(self, task) -> bool:
         if task.dont_filter:
             await self.q.push(task)
+            # logger.debug('Produce {}'.format(task))
             return True
         else:
             if await self.df.seen(task):
                 return False
             else:
                 await self.q.push(task)
+                # logger.debug('Produce {}'.format(task))
                 return True
 
     async def consume(self) -> _Task:
