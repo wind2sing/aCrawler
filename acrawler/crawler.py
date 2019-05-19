@@ -191,8 +191,6 @@ class Crawler(object):
         await self.manager()
 
         await CrawlerFinish(self).execute()
-        await self._on_close()
-        logger.info("End crawling...")
         await self.ashutdown()
 
     async def manager(self):
@@ -203,7 +201,6 @@ class Crawler(object):
         """
         try:
             self.loop.create_task(self._log_status_timer())
-
             for _ in range(self.max_requests):
                 self.workers.append(Worker(self, self.schedulers['Request']))
             for _ in range(self.max_workers):
@@ -211,9 +208,12 @@ class Crawler(object):
             logger.info('Create %d request workers', self.max_requests)
             logger.info('Create %d workers', self.max_workers)
             self.start_time = time.time()
-            self.taskers = []
+            self.taskers = {'Request':[], 'Default':[]}
             for worker in self.workers:
-                self.taskers.append(self.loop.create_task(worker.work()))
+                if worker.sdl is self.sdl_req:
+                    self.taskers['Request'].append(self.loop.create_task(worker.work()))
+                else:
+                    self.taskers['Default'].append(self.loop.create_task(worker.work()))
 
         except Exception:
             logger.error(traceback.format_exc())
@@ -309,17 +309,21 @@ class Crawler(object):
     
     async def ashutdown(self, signal=None):
         logger.info('Start shutdown...')
-        for tasker in self.taskers:
+        for tasker in self.taskers['Request']:
             tasker.cancel()
+        
+        while await self.sdl.q.get_length() != 0:
+            asyncio.sleep(0.5)
 
-        for tasker in self.taskers:
+        for tasker in self.taskers['Request']:
             try:
                 await tasker
             except asyncio.CancelledError:
                 pass
-        
         await self._log_status()
+        await self._on_close()
         logger.info('Shutdown crawler gracefully!')
+        logger.info("End crawling...")
         self.loop.stop()
 
     async def _log_status_timer(self):
