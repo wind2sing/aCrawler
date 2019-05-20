@@ -159,30 +159,3 @@ class SpecialTask(Task):
             await handler.handle(position=2, task=self)
 
 
-class CrawlerStart(SpecialTask):
-
-    def __init__(self, crawler: _Crawler):
-        self.crawler = crawler
-        super().__init__()
-
-    async def _execute(self):
-        await self._produce_tasks()
-
-    async def _produce_tasks(self):
-        logger.info("Produce initial tasks...")
-        async for task in to_asyncgen(self.crawler.start_requests):
-            if await self.crawler.schedulers['Request'].produce(task):
-                self.crawler.counter.task_add()
-
-
-class CrawlerFinish(SpecialTask):
-
-    def __init__(self, crawler: _Crawler):
-        self.crawler = crawler
-        super().__init__()
-
-    async def _execute(self):
-        await self._wait_finished()
-
-    async def _wait_finished(self):
-        await self.crawler.counter.join()

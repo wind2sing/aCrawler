@@ -1,16 +1,13 @@
 from acrawler import Crawler, Request, Response, callback, register
-
+import time
 
 class V2EXCrawler(Crawler):
-    config ={
-        'LOG_LEVEL' : 'DEBUG'
-    }
 
     def start_requests(self):
-        yield Request('https://www.v2ex.com/?tab=hot', family='v2ex')
+        yield Request('https://www.v2ex.com/?tab=hot', family='v2ex', exetime=time.time()+10, recrawl=5)
 
-    @callback('v2ex')
-    def parse_hot(self, response: Response):
+
+    def parse(self, response: Response):
         print('hello page!')
 
     @callback('v2ex')
