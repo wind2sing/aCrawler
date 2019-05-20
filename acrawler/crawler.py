@@ -52,21 +52,9 @@ class Worker:
                 try:
                     added = False
                     async for new_task in task.execute():
-                        added = False
-                        if isinstance(new_task, Task):
-                            if isinstance(new_task, Request):
-                                added = await self.crawler.sdl_req.produce(new_task)
-                            else:
-                                added = await self.crawler.sdl.produce(new_task)
-                        elif isinstance(new_task, dict):
-                            item = DefaultItem(extra=new_task)
-                            added = await self.crawler.sdl.produce(item)
-                        if added:
-                            self.crawler.counter.task_add()
-
                         if isinstance(new_task, Exception):
                             raise new_task
-
+                        added = await self.crawler.add_task(new_task)
                 except asyncio.CancelledError as e:
                     raise e
                 except Exception as e:
@@ -74,12 +62,14 @@ class Worker:
                     logger.error(traceback.format_exc())
                     exception = True
 
+                retry = False
                 if exception:
                     logger.warning(
                         'Task failed %s for %d times.', task, task.tries)
                     if task.tries < self._max_tries:
                         task.dont_filter = True
                         await self.sdl.produce(task)
+                        retry = True
                         self.crawler.counter.task_add()
                     else:
                         logger.warning(
@@ -87,6 +77,14 @@ class Worker:
                     self.crawler.counter.task_done(task, 0)
                 else:
                     self.crawler.counter.task_done(task, 1)
+
+                if task.recrawl > 0 and not retry:
+                    task.tries = 0
+                    task.init_time = time.time()
+                    task.exetime = task.last_crawl_time + task.recrawl
+                    task.dont_filter = True
+                    await self.crawler.add_task(task)
+
                 self.current_task = None
         except asyncio.CancelledError as e:
             if self.current_task:
@@ -196,14 +194,18 @@ class Crawler(object):
 
     async def arun(self):
         """Wraps :meth:`manager` and wait until all tasks finish."""
+        try:
+            logger.info("Start crawling...")
+            await self._on_start()
+            await CrawlerStart(self).execute()
+            await self.manager()
 
-        logger.info("Start crawling...")
-        await self._on_start()
-        await CrawlerStart(self).execute()
-        await self.manager()
-
-        await CrawlerFinish(self).execute()
-        await self.ashutdown()
+            await CrawlerFinish(self).execute()
+            await self.ashutdown()
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            logger.error(traceback.format_exc())
 
     async def manager(self):
         """Manages crawler's most important work.
@@ -240,9 +242,20 @@ class Crawler(object):
         for url in self.start_urls:
             yield Request(url)
 
-    async def add_task(self, task, sdl_name='Request'):
-        if await self.schedulers[sdl_name].produce(task):
+    async def add_task(self, new_task):
+        added = False
+        if isinstance(new_task, Task):
+            # logger.info('A new task{}'.format(new_task))
+            if isinstance(new_task, Request):
+                added = await self.sdl_req.produce(new_task)
+            else:
+                added = await self.sdl.produce(new_task)
+        elif isinstance(new_task, dict):
+            item = DefaultItem(extra=new_task)
+            added = await self.sdl.produce(item)
+        if added:
             self.counter.task_add()
+        return added
 
     def _form_config(self):
         d_config, d_rq_config, d_m_config = config_from_setting(
@@ -333,7 +346,7 @@ class Crawler(object):
                 tasker.cancel()
 
             while await self.sdl.q.get_length() != 0:
-                asyncio.sleep(0.5)
+                await asyncio.sleep(0.5)
 
             for tasker in self.taskers['Request']:
                 try:
@@ -378,7 +391,13 @@ class Crawler(object):
             with open(self.fi_tasks, 'wb') as f:
                 while(1):
                     try:
-                        t = self.sdl_req.q.pop_nowait()
+                        t = self.sdl_req.q.pq.get_nowait()[1]
+                        tasks.append(t)
+                    except asyncio.QueueEmpty:
+                        break
+                while(1):
+                    try:
+                        t = self.sdl_req.q.waiting.get_nowait()[1]
                         tasks.append(t)
                     except asyncio.QueueEmpty:
                         break

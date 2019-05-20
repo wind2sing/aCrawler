@@ -38,13 +38,16 @@ class Task:
                  priority: int = 0,
                  meta: dict = None,
                  family=None,
-                 _middleware=None):
+                 _middleware=None,
+                 recrawl: int = 0,
+                 exetime = 0):
 
         self.dont_filter = dont_filter
         self.priority = priority
         self.meta = meta or {}
 
-        self.families = set(cls.__name__ for cls in self.__class__.mro() if not isabstract(cls))
+        self.families = set(
+            cls.__name__ for cls in self.__class__.mro() if not isabstract(cls))
         if family:
             self.families.add(family)
         self.primary_family = family or self.__class__.__name__
@@ -57,19 +60,28 @@ class Task:
         #: Defaults to 0.
         self.tries = 0
 
-        #: The timestamp of task's initializing time.
-        self.initime = time.time()
+        self.recrawl = recrawl
+        if recrawl > 0:
+            self.dont_filter = True
 
-        #: The timestamp of task'last execution time.
-        self.exetime = None
+        #: The timestamp of task's initializing time.
+        self.init_time = time.time()
+
+        #: The timestamp of task' expected execution time.
+        if exetime > 0:
+            self.exetime = exetime
+        else:
+            self.exetime = self.init_time
+
+        self.last_crawl_time = None
 
     @property
     def score(self):
-        """Implements its real priority based on :attr:`initime` and :attr:`priority`"""
+        """Implements its real priority based on :attr:`expecttime` and :attr:`priority`"""
         return self._score()
 
     def _score(self):
-        return self.priority*10000000000 - self.initime
+        return self.priority*10000000000 - self.exetime
 
     @property
     def fingerprint(self):
@@ -84,7 +96,7 @@ class Task:
         :param kwargs: additional keyword args will be passed to :meth:`_execute`
         :return: an asyncgenerator yields Task.
         """
-        self.exetime = time.time()
+        self.last_crawl_time = time.time()
         self.tries += 1
 
         for handler in self.middleware.handlers:

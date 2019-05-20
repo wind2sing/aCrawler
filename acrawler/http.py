@@ -49,12 +49,18 @@ class Request(Task):
                  dont_filter: bool = False,
                  meta: dict = None,
                  priority: int = 0,
-                 family=None
+                 family=None,
+                 recrawl=0,
+                 exetime=0,
+                 **kwargs
                  ):
         super().__init__(dont_filter=dont_filter,
                          priority=priority,
                          meta=meta,
-                         family=family
+                         family=family,
+                         recrawl=recrawl,
+                         exetime=exetime,
+                         **kwargs
                          )
 
         self.url = URL(url)
@@ -129,6 +135,7 @@ class Request(Task):
     def __getstate__(self):
         state = super().__getstate__()
         state.pop('session', None)
+        state.pop('response', None)
         return state
 
 

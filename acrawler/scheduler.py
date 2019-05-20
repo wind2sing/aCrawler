@@ -4,6 +4,7 @@ import asyncio
 import pickle
 from acrawler.utils import check_import
 import traceback
+import time
 
 # Typing
 import acrawler
@@ -18,7 +19,7 @@ class BaseDupefilter:
     async def start(self):
         pass
 
-    async def seen(self, task: _Task)->bool:
+    async def seen(self, task: _Task) -> bool:
         return False
 
     async def has_fp(self, fp):
@@ -43,7 +44,7 @@ class SetDupefilter(BaseDupefilter):
     def __init__(self):
         self.fingerprints = set()
 
-    async def seen(self, task: _Task)->bool:
+    async def seen(self, task: _Task) -> bool:
         fp = task.fingerprint
         if await self.has_fp(fp):
             # logger.debug('Duplicated task found! %s', task)
@@ -108,13 +109,13 @@ class BaseQueue:
 
     async def push(self, task):
         raise NotImplementedError
-    
+
     def push_nowait(self, task):
         raise NotImplementedError
 
     async def pop(self):
         raise NotImplementedError
-    
+
     def pop_nowait(self):
         raise NotImplementedError
 
@@ -128,9 +129,9 @@ class BaseQueue:
         pass
 
     def serialize(self, task):
-        return pickle.dumps(task) 
+        return pickle.dumps(task)
 
-    def deserialize(self, message)->_Task:
+    def deserialize(self, message) -> _Task:
         return pickle.loads(message)
 
 
@@ -140,31 +141,56 @@ class AsyncPQ(BaseQueue):
     def __init__(self):
         super().__init__()
         self.pq = asyncio.PriorityQueue()
+        self.waiting = asyncio.PriorityQueue()
 
     async def push(self, task: _Task):
-        return await self.pq.put((-task.score, task))
-    
+        return await self.waiting.put((task.exetime, task))
+
     def push_nowait(self, task):
-        return self.pq.put_nowait((-task.score, task))
+        return self.waiting.put_nowait((task.exetime, task))
 
     async def pop(self):
-        return (await self.pq.get())[1]
+        self.transfer_waiting()
+        while 1:
+            try:
+                r = (self.pq.get_nowait())[1]
+                return r
+            except asyncio.QueueEmpty:
+                await asyncio.sleep(1)
+                self.transfer_waiting()
+
+    def transfer_waiting(self):
+        now = time.time()
+        while 1:
+            try:
+                task = (self.waiting.get_nowait())[1]
+                if task.exetime <= now:
+                    self.pq.put_nowait((-task.score, task))
+                else:
+                    self.push_nowait(task)
+                    break
+            except asyncio.QueueEmpty:
+                break
 
     def pop_nowait(self):
-        return self.pq.get_nowait()[1]
+        self.transfer_waiting()
+        r = (self.pq.get_nowait())[1]
+        return r
 
     async def get_length(self):
-        return self.pq.qsize()
+        return self.pq.qsize()+self.waiting.qsize()
 
     async def clear(self):
         self.pq = asyncio.PriorityQueue()
+        self.waiting = asyncio.PriorityQueue()
 
 
 class RedisPQ(BaseQueue):
     def __init__(self, address='redis://localhost', q_key='acrawler:queue'):
         super().__init__()
         self.address = address
-        self.q_key = q_key
+        self.pq_key = q_key + ':pq'
+        self.waiting_key = q_key + ':waiting'
         self.redis = None
 
     async def start(self):
@@ -172,27 +198,53 @@ class RedisPQ(BaseQueue):
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def push(self, task: _Task):
-        return await self.redis.zadd(self.q_key,
-                                     task.score,
+        return await self.redis.zadd(self.waiting_key,
+                                     task.exetime,
                                      self.serialize(task))
 
     async def pop(self):
+        await self.transfer_waiting()
         while True:
             tr = self.redis.multi_exec()
-            tr.zrange(self.q_key, -1, -1)
-            tr.zremrangebyrank(self.q_key, -1, -1)
+            tr.zrange(self.pq_key, 0, 0)
+            tr.zremrangebyrank(self.pq_key, 0, 0)
             eles, count = await tr.execute()
 
             if eles:
                 return self.deserialize(eles[0])
             else:
-                await asyncio.sleep(3)
+                await asyncio.sleep(1)
+                await self.transfer_waiting()
+
+    async def transfer_waiting(self):
+        now = time.time()
+        while True:
+            tr = self.redis.multi_exec()
+            tr.zrange(self.waiting_key, 0, 0)
+            tr.zremrangebyrank(self.waiting_key, 0, 0)
+            eles, count = await tr.execute()
+
+            if eles:
+                task = self.deserialize(eles[0])
+                if task.exetime <= now:
+                    await self.redis.zadd(self.pq_key,
+                                          -task.score,
+                                          self.serialize(task))
+                else:
+                    await self.push(task)
+                    break
+            else:
+                break
 
     async def clear(self):
         return await self.redis.delete(self.q_key)
 
     async def get_length(self):
-        return await self.redis.zcard(self.q_key)
+        tr = self.redis.multi_exec()
+        tr.zcard(self.pq_key)
+        tr.zcard(self.waiting_key)
+        l1, l2 = await tr.execute()
+        return l1 + l2
 
     async def close(self):
         self.redis.close()
@@ -220,22 +272,22 @@ class Scheduler:
         await self.df.start()
         await self.q.start()
 
-
     async def produce(self, task) -> bool:
         if task.dont_filter:
             await self.q.push(task)
-            # logger.debug('Produce {}'.format(task))
+            logger.debug('Produce {}'.format(task))
             return True
         else:
             if await self.df.seen(task):
                 return False
             else:
                 await self.q.push(task)
-                # logger.debug('Produce {}'.format(task))
+                logger.debug('Produce {}'.format(task))
                 return True
 
     async def consume(self) -> _Task:
         task = await self.q.pop()
+        logger.debug('Consume {}'.format(task))
         return task
 
     async def close(self):

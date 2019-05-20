@@ -185,9 +185,9 @@ class CrawlerStartAddon(Handler):
 
     async def handle_after(self, task):
         if self.crawler.redis_enable:
-            self.crawler.loop.create_task(self._next_request_from_redis())
+            self.crawler.loop.create_task(self._next_request_from_redis_start())
 
-    async def _next_request_from_redis(self):
+    async def _next_request_from_redis_start(self):
         while True:
             _, url = await self.redis.blpop(self.crawler.config.get('REDIS_START_KEY'))
             task = Request(str(url, encoding="utf-8"))
