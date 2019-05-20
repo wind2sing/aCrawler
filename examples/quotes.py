@@ -1,5 +1,7 @@
 # Scrape quotes from http://quotes.toscrape.com/
-from acrawler import Parser, Crawler, Processors, ParselItem, get_logger
+from acrawler import Parser, Crawler, Processors, ParselItem, get_logger, Request
+import time
+
 
 logger = get_logger('quotes')
 
@@ -36,6 +38,8 @@ class AuthorItem(ParselItem):
 class QuoteCrawler(Crawler):
     config = {
         'LOG_LEVEL': 'INFO',
+        'PERSISTENT': True,
+        'PERSISTENT_NAME': 'Quote',
     }
 
     start_urls = ['http://quotes.toscrape.com/page/1/',
@@ -43,7 +47,7 @@ class QuoteCrawler(Crawler):
                     'http://quotes.toscrape.com/page/10/',
                     'http://quotes.toscrape.com/page/15/',
                   ]
-    max_requests = 10
+    max_requests = 5
 
     main_page = r'quotes.toscrape.com/page/\d+'
     author_page = r'quotes.toscrape.com/author/.*'
@@ -54,6 +58,11 @@ class QuoteCrawler(Crawler):
                       ),
                Parser(in_pattern=author_page, item_type=AuthorItem)
                ]
+
+    async def start_requests(self):
+        for url in self.start_urls:
+            # Delay 5s to start
+            yield Request(url, exetime=time.time()+5)
 
 
 if __name__ == '__main__':

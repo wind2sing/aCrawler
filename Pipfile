@@ -9,6 +9,7 @@ pytest = "*"
 pytest-asyncio = "*"
 aioredis = "*"
 autopep8 = "*"
+motor = "*"
 
 [packages]
 aiohttp = "*"

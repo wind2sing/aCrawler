@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.4](https://github.com/pansenlin30/aCrawler/compare/v0.0.3...v0.0.4) (2019-05-20)
+
+
+### Bug Fixes
+
+* **crawler:** shutdown after non-request tasks finish ([dc5404c](https://github.com/pansenlin30/aCrawler/commit/dc5404c))
+* **examples:** update WALLHAVEN with callback ([93c6dae](https://github.com/pansenlin30/aCrawler/commit/93c6dae))
+* **http:** fix pickle for Request ([6b83d36](https://github.com/pansenlin30/aCrawler/commit/6b83d36))
+
+
+### Features
+
+* **crawler:** catch system's signals gracefully ([f5f595c](https://github.com/pansenlin30/aCrawler/commit/f5f595c)), closes [#3](https://github.com/pansenlin30/aCrawler/issues/3)
+* **crawler:** support persistent crawling ([d55cfce](https://github.com/pansenlin30/aCrawler/commit/d55cfce)), closes [#4](https://github.com/pansenlin30/aCrawler/issues/4)
+* **handler:** support mongodb & fix bugs ([8956a31](https://github.com/pansenlin30/aCrawler/commit/8956a31))
+* **http:** support status_allowed parameter and setting ([dc86fdf](https://github.com/pansenlin30/aCrawler/commit/dc86fdf))
+* **item:** custom_process allows async/asyncgenerator ([3a6f64b](https://github.com/pansenlin30/aCrawler/commit/3a6f64b))
+* **parse:** ParselItem supports rules_first ([e6cd5c3](https://github.com/pansenlin30/aCrawler/commit/e6cd5c3))
+* **task:** support recrawl, exetime ([77c59d7](https://github.com/pansenlin30/aCrawler/commit/77c59d7)), closes [#5](https://github.com/pansenlin30/aCrawler/issues/5)
+
+
+
 ### [0.0.3](https://github.com/pansenlin30/aCrawler/compare/v0.0.2...v0.0.3) (2019-05-18)
 
 
