@@ -121,7 +121,7 @@ class Request(Task):
                                                                    request=self,
                                                                    family=self.httpfamily)
                 rt = self.response
-                logger.debug(rt)
+                logger.info(rt)
         except Exception as e:
             rt = e
         finally:
@@ -277,8 +277,9 @@ class FileRequest(Request):
             self.file_dir = Path(self.meta[self.file_dir_key])
 
         self.file_name = self.url_str.split('/')[-1]
+        ext = self.file_name.split('.')[-1]
         if self.file_name_key in self.meta:
-            self.file_name = self.meta[self.file_name_key]
+            self.file_name = self.meta[self.file_name_key] + '.' + ext
 
         self.meta['where'] = self.file_dir/self.file_name
 

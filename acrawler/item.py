@@ -18,7 +18,8 @@ class Item(Task, collections.MutableMapping):
 
     :param extra: During initialing, :attr:`content` will be updated from `extra`.
     """
-    logger = logger
+    log = False
+
 
     def __init__(self, extra: dict = None, **kwargs
                  ):
@@ -68,13 +69,10 @@ class Item(Task, collections.MutableMapping):
         async for task in self._process():
             yield task
         yield None
+        if self.log:
+            logger.info(self.content)
 
     async def _process(self):
-        # if isgeneratorfunction(self.custom_process):
-        #     yield from self.custom_process(self.content)
-        # elif ismethod(self.custom_process) or isfunction(self.custom_process):
-        #     yield self.custom_process(self.content)
-
         async for task in to_asyncgen(self.custom_process, self.content):
             yield task
 
@@ -88,6 +86,8 @@ class Item(Task, collections.MutableMapping):
 
 class DefaultItem(Item):
     pass
+
+
 class DebugItem(Item):
     def custom_process(self, item):
         logger.debug(item)
@@ -205,15 +205,10 @@ class ParselItem(Item):
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
 
-        self.custom_parse(item)
 
         self.content.update(self.process(item))
         return self.content
 
-    def custom_parse(self, item):
-        """ Could be rewritten for your own purpose.
-        """
-        pass
 
     def process(self, item):
         """Call field processors."""
