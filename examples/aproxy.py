@@ -1,4 +1,3 @@
-from acrawler.handlers import ItemDebug
 from acrawler import Crawler, Request, ParselItem, Parser, middleware, get_logger
 import re
 import random
@@ -54,7 +53,7 @@ class ProxyCrawler(Crawler):
 
     max_requests = 2
 
-    Parsers = [Parser(css_divider='table tr', item_type=ProxyItem)]
+    parsers = [Parser(css_divider='table tr', item_type=ProxyItem)]
 
     async def start_requests(self):
         urls = []

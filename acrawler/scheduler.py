@@ -47,8 +47,6 @@ class SetDupefilter(BaseDupefilter):
     async def seen(self, task: _Task) -> bool:
         fp = task.fingerprint
         if await self.has_fp(fp):
-            # logger.debug('Duplicated task found! %s', task)
-
             return True
         else:
             await self.add_fp(fp)
@@ -80,7 +78,6 @@ class RedisDupefilter(BaseDupefilter):
     async def seen(self, task: _Task):
         fp = task.fingerprint
         if await self.add_fp(fp) == 0:
-            # logger.debug('Duplicated task found! %s', task)
             return True
         else:
             return False
@@ -275,19 +272,16 @@ class Scheduler:
     async def produce(self, task) -> bool:
         if task.dont_filter:
             await self.q.push(task)
-            logger.debug('Produce {}'.format(task))
             return True
         else:
             if await self.df.seen(task):
                 return False
             else:
                 await self.q.push(task)
-                logger.debug('Produce {}'.format(task))
                 return True
 
     async def consume(self) -> _Task:
         task = await self.q.pop()
-        logger.debug('Consume {}'.format(task))
         return task
 
     async def close(self):

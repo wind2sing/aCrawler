@@ -92,7 +92,7 @@ class ResponseAddCallback(Handler):
     callback_table = {}
 
     def handle_before(self, response: _Response):
-        for parser in self.crawler.Parsers:
+        for parser in self.crawler.parsers:
             response.add_callback(parser.parse)
 
         if response.primary_family in self.callback_table:
@@ -118,11 +118,6 @@ callback = ResponseAddCallback.callback
 """
 
 # Item Part
-class ItemDebug(Handler):
-    family = 'Item'
-
-    def handle_after(self, item):
-        logger.debug(item.content)
 
 
 class ItemToRedis(Handler):

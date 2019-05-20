@@ -27,7 +27,7 @@ class MyCrawler(Crawler):
 
     main_page = 'movie.douban.com/top250.*'
     sub_page = 'movie.douban.com/subject/\d+/$'
-    Parsers = [Parser(in_pattern=main_page,
+    parsers = [Parser(in_pattern=main_page,
                       follow_patterns=[main_page, sub_page], ),
                Parser(in_pattern=sub_page, item_type=MovieItem
                       )]

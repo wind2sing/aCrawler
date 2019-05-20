@@ -83,7 +83,7 @@ class QuoteCrawler(Crawler):
 
     main_page = r'quotes.toscrape.com/page/\d+'
     author_page = r'quotes.toscrape.com/author/.*'
-    Parsers = [Parser(in_pattern=main_page,
+    parsers = [Parser(in_pattern=main_page,
                       follow_patterns=[main_page, author_page],
                       item_type=QuoteItem,
                       css_divider='.quote'

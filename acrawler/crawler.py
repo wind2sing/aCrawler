@@ -155,7 +155,7 @@ class Crawler(object):
     start_urls: List[str] = []
 
     #: Shortcuts for parsing response, ready for appending middleware.
-    Parsers: List['Parser'] = []
+    parsers: List['Parser'] = []
 
     request_config = {}
     config = {}
