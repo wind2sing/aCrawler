@@ -6,7 +6,7 @@
 
 
 
-This project is at *very early* stage.
+This project is at *very early* stage and may face breaking changes in the future.
 
 ## Feature
 
@@ -18,6 +18,8 @@ This project is at *very early* stage.
 - Stop and Resume: crawl periodically and persistently
 - Distributed work support with Redis
 
+
+
 ## Installation
 
 To install, simply use [pipenv](http://pipenv.org/) (or pip):
@@ -26,7 +28,7 @@ To install, simply use [pipenv](http://pipenv.org/) (or pip):
 $ pipenv install acrawler
 
 (Optional)
-$ pipenv install uvloop (only Linux/Mac)
+$ pipenv install uvloop (only Linux/macOS)
 $ pipenv install aioredis (if you need Redis support)
 $ pipenv install motor (if you need MongoDB support)
 ```
@@ -78,7 +80,7 @@ if __name__ == "__main__":
 
 - Any `Request` yielded from `start_requests()` will combine `crawler.parse()` to its callbacks and passes all callbacks to `Response`
 
-- `Response` executes by calling its callbacks. Callback funtion should accepts one argument `response`. `response.sel` is a `Selector`. See [Parsel](https://parsel.readthedocs.io/en/latest/).
+- `Response` executes by calling its callbacks. Callback funtion should accepts one argument `response`. `response.sel` is a `Selector`. See [Parsel](https://parsel.readthedocs.io/en/latest/) for parsing rules.
 
   
 
@@ -100,10 +102,10 @@ There are several basic `Tasks` defined here.
 ### About family
 
 - Each handler has only one family
-- Each tasks has `families` (defaults to names of all base classes and itself). If you pass `family` to a task, it will be added to task's families. Specially, a `Request`'s user-passed `family` will be passed to its `Response`'s family.
+- Each task has `families` (defaults to names of all base classes and itself). If you pass `family` to a task, it will be added to task's families. Specially, a `Request`'s user-passed `family` will be passed to its `Response`'s family.
 - `family` is used for `handler` and `callback`
   - You can use decorator `@register()` to add a `handler` to crawler. If a `handler`'s family is in a `task`'s families, then `handler` matches `task`. It will start work on this `task`.
-- You can use decorator `@callback()` to add a callback to `response`. If `family` in `@callback()` is in a `response`'s families, then callback will be combined to this `response`.
+  - You can use decorator `@callback(family='')` to add a callback to `response`. If `family` in `@callback()` is in a `response`'s families, then callback will be combined to this `response`.
 
 
 
@@ -141,7 +143,7 @@ class AuthorItem(ParselItem):
 
 
 class QuoteCrawler(Crawler):
-    config = {'LOG_LEVEL': 'DEBUG'}
+    config = {}
 
     start_urls = ['http://quotes.toscrape.com/page/1/', ]
 
@@ -167,4 +169,7 @@ See [examples](examples/).
 ## Todo
 
 - Support JavaScript with pyppeteer
+- Absolute links support
+- Better logging
 - Monitor all your crawlers
+- Documentation
