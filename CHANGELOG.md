@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.5](https://github.com/pansenlin30/aCrawler/compare/v0.0.4...v0.0.5) (2019-05-21)
+
+
+### Bug Fixes
+
+* **crawler:** use parsers rather than Parsers ([b01ffdc](https://github.com/pansenlin30/aCrawler/commit/b01ffdc))
+* **item:** better log & not support custom_parse ([1db20b7](https://github.com/pansenlin30/aCrawler/commit/1db20b7))
+
+
+### Features
+
+* **examples:** scrape Bilibili video info ([e81d5d2](https://github.com/pansenlin30/aCrawler/commit/e81d5d2))
+* **parse:** Request from start_request() has default callback parse() ([9c061fc](https://github.com/pansenlin30/aCrawler/commit/9c061fc))
+
+
+
+### [0.0.5](https://github.com/pansenlin30/aCrawler/compare/v0.0.4...v0.0.5) (2019-05-21)
+
+
+### Bug Fixes
+
+* **crawler:** use parsers rather than Parsers ([b01ffdc](https://github.com/pansenlin30/aCrawler/commit/b01ffdc))
+* **item:** better log & not support custom_parse ([1db20b7](https://github.com/pansenlin30/aCrawler/commit/1db20b7))
+
+
+### Features
+
+* **examples:** scrape Bilibili video info ([e81d5d2](https://github.com/pansenlin30/aCrawler/commit/e81d5d2))
+* **parse:** Request from start_request() has default callback parse() ([9c061fc](https://github.com/pansenlin30/aCrawler/commit/9c061fc))
+
+
+
+### [0.0.5](https://github.com/pansenlin30/aCrawler/compare/v0.0.4...v0.0.5) (2019-05-21)
+
+
+### Bug Fixes
+
+* **crawler:** use parsers rather than Parsers ([b01ffdc](https://github.com/pansenlin30/aCrawler/commit/b01ffdc))
+* **item:** better log & not support custom_parse ([1db20b7](https://github.com/pansenlin30/aCrawler/commit/1db20b7))
+
+
+### Features
+
+* **examples:** scrape Bilibili video info ([e81d5d2](https://github.com/pansenlin30/aCrawler/commit/e81d5d2))
+* **parse:** Request from start_request() has default callback parse() ([9c061fc](https://github.com/pansenlin30/aCrawler/commit/9c061fc))
+
+
+
 ### [0.0.4](https://github.com/pansenlin30/aCrawler/compare/v0.0.3...v0.0.4) (2019-05-20)
 
 

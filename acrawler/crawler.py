@@ -346,7 +346,7 @@ class Crawler(object):
 
     async def ashutdown(self, signal=None):
         try:
-            logger.info('Start shutdown...')
+            logger.info('Start shutdown. May take some time to finish Non-Request Task...')
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 

@@ -10,10 +10,10 @@ pytest-asyncio = "*"
 aioredis = "*"
 autopep8 = "*"
 motor = "*"
+uvloop = "*"
 
 [packages]
 aiohttp = "*"
-uvloop = "*"
 parsel = "*"
 aiofiles = "*"
 cchardet = "*"

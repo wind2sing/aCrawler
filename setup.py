@@ -4,16 +4,14 @@ from setuptools import setup
 NAME = 'acrawler'
 DESCRIPTION = 'A simple web-crawling framework, based on aiohttp.'
 URL = 'https://github.com/pansenlin30/aCrawler'
-EMAIL = ''
+EMAIL = 'zireael.me@gmail.com'
 AUTHOR = 'Pan Senlin'
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 
 packages = ['acrawler']
 requires = [
     'aiohttp',
     'aiofiles',
-    'pyquery',
-    'uvloop',
     'parsel',
     'cchardet'
 ]

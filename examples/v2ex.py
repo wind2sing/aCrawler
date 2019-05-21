@@ -1,17 +1,18 @@
-from acrawler import Crawler, Request, Response, callback, register
-import time
+from acrawler import Crawler, Request, callback, register
 
 class V2EXCrawler(Crawler):
 
     def start_requests(self):
-        yield Request('https://www.v2ex.com/?tab=hot', family='v2ex', exetime=time.time()+10, recrawl=5)
+        yield Request('https://www.v2ex.com/?tab=hot',
+                      family='v2ex',  # Optional
+                      callback=None,  # Optional
+                      )
 
-
-    def parse(self, response: Response):
-        print('hello page!')
+    def parse(self, response):
+        print('This is default callback function! Auto combined to any request yield from start_requests().')
 
     @callback('v2ex')
-    def parse_hot2(self, response: Response):
+    def parse_hot(self, response):
         aa = response.sel.css('.item_title a')
         for a in aa:
             d = {
@@ -24,6 +25,7 @@ class V2EXCrawler(Crawler):
 @register('DefaultItem')
 def process_d(d):
     print(d.content)
+
 
 if __name__ == "__main__":
     V2EXCrawler().run()

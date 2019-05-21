@@ -9,7 +9,6 @@ from pathlib import Path
 import traceback
 import logging
 from yarl import URL
-from pyquery import PyQuery
 from parsel import Selector, SelectorList
 from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
