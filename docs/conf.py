@@ -32,7 +32,7 @@ release = 'v0.0.5'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinxcontrib.napoleon',
+    'sphinx.ext.napoleon',
     'sphinx_autodoc_typehints'
 ]
 
