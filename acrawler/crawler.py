@@ -1,3 +1,4 @@
+import acrawler
 from typing import List, Dict
 import asyncio
 import logging
@@ -24,17 +25,23 @@ try:
 except ImportError:
     pass
 
+# typing
+from typing import Tuple, Dict, Any, Type, TYPE_CHECKING
+import acrawler
+_Config = Dict[str, Any]
+_Response = acrawler.http.Response
+
 
 logger = logging.getLogger(__name__)
 
 
 class Worker:
-    """Worker do the task's work.
+    """Worker execute the task.
 
     One :class:`Crawler` will create many workers. A worker will
     - calls its scheduler's methods
     - implements task's retry mechanism
-    - counts success and error
+    - catch the result of a task's execution
     """
 
     def __init__(self, crawler: 'Crawler', sdl: Scheduler = None, ):
@@ -98,6 +105,9 @@ class Worker:
 
 
 class Counter:
+    """A global counter records unfinished count of tasks.
+    """
+
     def __init__(self, loop=None):
         self.counts = {}
         self._unfinished_tasks = 0
@@ -143,24 +153,67 @@ class Counter:
         self.__dict__['_finished'] = asyncio.Event()
         self.__dict__['_finished'].set()
 
-
 class Crawler(object):
-    #: Every task will try to execute for `max_tries` times.
+    """This is the base crawler, from which all crawlers that you write yourself must inherit.
+
+    Attributes:
+
+    """
+
     max_tries: int = 3
+    """A task will try to execute for `max_tries` times before complete fail."""
 
-    #: Every crawler will obtain `max_requests` request concurrently.
     max_requests: int = 5
+    """A crawler will obtain `max_requests` request concurrently."""
 
-    #: Ready for vanilla :meth:`start_requests`
     start_urls: List[str] = []
+    """Ready for vanilla :meth:`start_requests`"""
 
-    #: Shortcuts for parsing response, ready for appending middleware.
-    parsers: List['Parser'] = []
+    parsers: List['acrawler.Parser'] = []
+    """Shortcuts for parsing response. 
 
-    request_config = {}
-    config = {}
-    middleware_config = {}
-    meta = {}
+    Crawler will automatically append :meth:`acrawler.parser.Parser.parse` to response's 
+    callbacks list for each parser in parsers.
+    """
+
+    request_config: _Config = {}
+    """Key-Value pairs will be passed as keyword arguments to every sended `aiohttp.request`.
+
+    acceptable keyword
+        params - Dictionary or bytes to be sent in the query string of the new request
+
+        data - Dictionary, bytes, or file-like object to send in the body of the request
+
+        json - Any json compatible python object
+
+        headers - Dictionary of HTTP Headers to send with the request
+
+        cookies - Dict object to send with the request
+
+        allow_redirects - If set to False, do not follow redirects
+
+        timeout - Optional ClientTimeout settings structure, 5min total timeout by default.
+    """
+
+    middleware_config: _Config = {}
+    """Key-value pairs for handler-priority.
+
+    Examples:
+        Handler with higer priority handles the task earlier. Priority 0 will disable the handler::
+
+            {
+                'some_old_handler': 0,
+                'myhandler_first': 1000,
+                'myhandler': 500
+            }
+
+    """
+
+    config: _Config = {}
+    """Config dictionary for this crawler. See avaliable options in `setting`.
+    """
+
+
 
     def __init__(self):
 
@@ -177,13 +230,16 @@ class Crawler(object):
         self.workers: List['Worker'] = []
 
         self.middleware = middleware
+        """Singleton object :class:`acrawler.middleware.middleware`"""
+
         self.middleware.crawler = self
         self._add_default_middleware_handler_cls()
         logger.info("Initializing middleware's handlers...")
         logger.info(self.middleware)
 
     def run(self):
-        """Wraps :meth:`manager` and wait until all tasks finish."""
+        """Core method of the crawler. Usually called to start crawling."""
+
         signals = (signal.SIGINT, )
         for s in signals:
             self.loop.add_signal_handler(
@@ -193,7 +249,7 @@ class Crawler(object):
         self.loop.run_forever()
 
     async def arun(self):
-        """Wraps :meth:`manager` and wait until all tasks finish."""
+        # Wraps main works and wait until all tasks finish.
         try:
             logger.info("Start crawling...")
             await self._on_start()
@@ -208,10 +264,7 @@ class Crawler(object):
             logger.error(traceback.format_exc())
 
     async def manager(self):
-        """Manages crawler's most important work.
-
-        - ensures status logger coroutine
-        - creates multiple workers to do tasks.
+        """Create multiple workers to execute tasks.
         """
         try:
             self.loop.create_task(self._log_status_timer())
@@ -237,18 +290,29 @@ class Crawler(object):
     async def start_requests(self):
         """Should be rewritten for your custom spider.
 
-        Otherwise it will yield every url in :attr:`start_urls`.
+        Otherwise it will yield every url in :attr:`start_urls`. Any Request yielded from :meth:`start_requests`
+        will combine :meth:`parse` to its callbacks and passes all callbacks to Response
         """
         for url in self.start_urls:
             yield Request(url)
 
+    async def parse(self, response: _Response):
+        """ Default callback function for Requests generated by default :meth:`start_requests`.
 
-    async def parse(self, response):
-        """ Default callback function for Requests generated by default start_requests()
+        Args:
+            response: the response task generated from corresponding request.
         """
         yield None
 
-    async def add_task(self, new_task):
+    async def add_task(self, new_task: 'acrawler.task.Task') -> bool:
+        """ Interface to add new Task to schedulers.
+
+        Args:
+            new_task: a Task or a dictionary which will be catched as :class:`~acrawler.item.DefaultItem` task.
+
+        Returns:
+            True if the task is successfully added.
+        """
         added = False
         if isinstance(new_task, Task):
             if isinstance(new_task, Request):
@@ -263,6 +327,7 @@ class Crawler(object):
         return added
 
     def _form_config(self):
+        # merge configs from three levels of sources
         d_config, d_rq_config, d_m_config = config_from_setting(
             DEFAULT_SETTING)
         try:
@@ -283,6 +348,7 @@ class Crawler(object):
         )
 
     def _logging_config(self):
+        # log three types of config
         level = self.config.get('LOG_LEVEL')
         logging.getLogger('acrawler').setLevel(level)
         logger.debug("Merging configs...")
@@ -294,6 +360,7 @@ class Crawler(object):
             f'middleware_config:\n {pformat(self.middleware_config)}')
 
     def _create_schedulers(self):
+        # we maintain two schedulers, request task / non-request task.
         self.counter = Counter(loop=self.loop)
         self.redis_enable = self.config.get('REDIS_ENABLE', False)
         self.persistent = self.config.get('PERSISTENT', False)
@@ -320,6 +387,7 @@ class Crawler(object):
         self._persist_load()
 
     def _add_default_middleware_handler_cls(self):
+        # append handlers from middleware_config.
         for kv in self.middleware_config.items():
             name = kv[0]
             key = kv[1]
@@ -331,6 +399,7 @@ class Crawler(object):
                 self.middleware.append_handler_cls(mcls)
 
     async def _on_start(self):
+        # call handlers's on_start()
         for sdl in self.schedulers.values():
             await sdl.start()
         logger.info("Call on_start()...")
@@ -338,6 +407,7 @@ class Crawler(object):
             await handler.handle(0)
 
     async def _on_close(self):
+        # call handlers's on_close()
         for sdl in self.schedulers.values():
             await sdl.close()
         logger.info("Call on_close()...")
@@ -345,8 +415,15 @@ class Crawler(object):
             await handler.handle(3)
 
     async def ashutdown(self, signal=None):
+        # shutdown method.
+        # 
+        # - cancel all Request workers
+        # - wait for all nonRequest workers
+        # - deal with keyboardinterrupt.
+        # - save current status if persistent
         try:
-            logger.info('Start shutdown. May take some time to finish Non-Request Task...')
+            logger.info(
+                'Start shutdown. May take some time to finish Non-Request Task...')
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 
@@ -374,14 +451,16 @@ class Crawler(object):
 
     def _persist_load(self):
         if self.persistent and not self.redis_enable:
-            tag = self.config.get('PERSISTENT_NAME', None) or self.__class__.__name__
+            tag = self.config.get(
+                'PERSISTENT_NAME', None) or self.__class__.__name__
             fname = '.' + tag
             self.fi_tasks: Path = Path.cwd() / (fname + '.tasks')
-            self.fi_df: Path =  Path.cwd() / (fname + '.df')
+            self.fi_df: Path = Path.cwd() / (fname + '.df')
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, 'rb') as f:
                     tasks = pickle.load(f)
-                logger.info('Load {} tasks from local file {}.'.format(len(tasks), self.fi_tasks))
+                logger.info('Load {} tasks from local file {}.'.format(
+                    len(tasks), self.fi_tasks))
                 for t in tasks:
                     self.sdl_req.q.push_nowait(t)
                     self.counter.task_add()
@@ -407,12 +486,12 @@ class Crawler(object):
                     except asyncio.QueueEmpty:
                         break
                 pickle.dump(tasks, f)
-            logger.info('Dump {} tasks into local file {}.'.format(len(tasks), self.fi_tasks))
+            logger.info('Dump {} tasks into local file {}.'.format(
+                len(tasks), self.fi_tasks))
 
             with open(self.fi_df, 'wb') as f:
                 pickle.dump(self.sdl_req.df, f)
             logger.info('Dump Dupefilter to {}'.format(self.fi_df))
-
 
     async def _log_status_timer(self):
         while True:
@@ -432,6 +511,10 @@ class Crawler(object):
 
 
 class CrawlerStart(SpecialTask):
+    """ A special task that executes when crawler starts.
+
+    It will call :meth:`Crawler.start_requests` to yield tasks.
+    """
 
     def __init__(self, crawler):
         self.crawler = crawler
@@ -450,6 +533,10 @@ class CrawlerStart(SpecialTask):
 
 
 class CrawlerFinish(SpecialTask):
+    """A special task that executes after creating all workers.
+
+    It will block the crawler from shutdown until all tasks finish.
+    """
 
     def __init__(self, crawler):
         self.crawler = crawler
