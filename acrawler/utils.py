@@ -1,3 +1,10 @@
+"""acrawler.utils
+
+This module provides utility functions that are used by aCrawler.
+Some are used for external consumption.
+
+"""
+
 import sys
 import asyncio
 import logging
@@ -8,8 +15,20 @@ from pathlib import Path
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod, isgenerator
 
+#typing
+from typing import Tuple, Dict, Any
+_Config = Dict[str, Any]
 
-def config_from_setting(module):
+
+def config_from_setting(module) -> Tuple[_Config, _Config, _Config]:
+    """Generate three types of config from `setting.py`.
+
+    Args:
+        module: the module returned from :func:`importlib.import_module`
+
+    Returns:
+        `config`, `request_config`, `middleware_config`
+    """
     context = {}
     for key in dir(module):
         if not key.startswith('__'):
@@ -20,7 +39,9 @@ def config_from_setting(module):
     return config, request_config, middleware_config
 
 
-def merge_config(*configs):
+def merge_config(*configs: _Config) -> _Config:
+    """Merge different configs in order.
+    """
     r = {}
     for config in configs:
         r = {**r, **config}
@@ -28,7 +49,7 @@ def merge_config(*configs):
 
 
 async def to_asyncgen(fn, *args, **kwargs):
-    if type(fn)==partial:
+    if type(fn) == partial:
         judge = fn.func
     else:
         judge = fn

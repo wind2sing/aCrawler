@@ -40,13 +40,18 @@ class HandlerMetaClass(type):
 class Handler(metaclass=HandlerMetaClass):
     """A handler wraps functions for a specific task.
 
-    :param family: associated with `Task`'s family.
-    :param position: 0 means that function is called before
-        task's execution. 1 means after task's execution.
-    :param func: a callable function or coroutine function, cannot be a generator
     """
-    family = '_Default'
-    priority = 100
+
+    family: str = '_Default'
+    """Associated with `Task`'s families. One handler only has one family. If a 
+    handler's family is in a task's families, this handler matches the task and then 
+    somes fuctions will be called before and after the task.
+    """
+
+    priority: int = 100
+    """A handler with higher priority will be checked with task earlier.
+    A handler with priority 0 will be disabled.
+    """
 
     def __init__(self,
                  family: str = None,
@@ -79,15 +84,24 @@ class Handler(metaclass=HandlerMetaClass):
         return middleware.crawler
 
     async def on_start(self):
+        """When Crawler starts(before :meth:`~acrawler.crawler.Crawler.start_requests`), 
+        this method will be called.
+        """
         pass
 
     async def handle_before(self, task: _Task):
+        """Then function called before the execution of the task.
+        """
         pass
 
     async def handle_after(self, task: _Task):
+        """Then function called after the execution of the task.
+        """
         pass
 
     async def on_close(self):
+        """When Crawler closes, this method will be called.
+        """
         pass
 
     async def handle(self, position: int, task: _Task = None):
@@ -145,6 +159,36 @@ class _Middleware(metaclass=SingletonMetaclass):
     def register(self, family: str = None, position: int = None, priority: int = None):
         """The factory method for creating decorators to register handlers to middleware.
         Singledispathed for differenct types of targets.
+
+        If you register a function, you must give `position` and `family`.
+        If you register a Handler class, you can register it without explicit parameters::
+
+            @register(family='Myfamily', position=1)
+            def my_func(task):
+                print("This is called before execution")
+                print(task)
+
+            @register()
+            class MyHandler(Handler):
+                family = 'Myfamily'
+
+                def handle(self, task):
+                    print("This is called before execution")
+                    print(task)
+
+        Args:
+            family: received as the :attr:`Handler.family` of the Handler.
+            priority: received as the :attr:`Handler.priority` of the Handler.
+            position: represents the role of function. Should be a valid int: 0/1/2/3
+
+                0 -  :meth:`Handler.on_start`
+
+                1 -  :meth:`Handler.handle_before`
+
+                2 -  :meth:`Handler.handle_after`
+
+                3 -  :meth:`Handler.on_close`
+
         """
         @functools.singledispatch
         def decorator(target):
@@ -186,9 +230,10 @@ class _Middleware(metaclass=SingletonMetaclass):
             handler.family = family
         if priority:
             handler.priority = priority
-        self.handlers.append(handler)
+        if handler.priority!=0:
+            self.handlers.append(handler)
         return handler_cls
-    
+
     def get_handler(self, *families):
         tmp = []
         for family in families:
@@ -204,7 +249,8 @@ middleware = _Middleware()
 """The singleton instance to manege middlewares.
 
 Use :meth:`@middleware.register` as a decorator.
-The decorator receive a parameter as the family key to store middleware functions.
 """
 
 register = middleware.register
+"""Shortcut for :meth:`middleware.register`
+"""
