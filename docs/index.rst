@@ -13,10 +13,9 @@ aCrawler documentation
 .. image:: https://img.shields.io/pypi/v/acrawler.svg
    :target: https://pypi.org/project/acrawler/
    :alt: PyPI
-
 .. image:: https://readthedocs.org/projects/acrawler/badge/?version=latest
-:target: https://acrawler.readthedocs.io/en/latest/?badge=latest
-:alt: Documentation Status
+    :target: https://acrawler.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
 
 
 🔍 A simple web-crawling framework, based on aiohttp.
