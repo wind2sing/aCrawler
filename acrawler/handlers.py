@@ -122,9 +122,27 @@ callback = ResponseAddCallback.callback
 
 class ItemToRedis(Handler):
     family = 'Item'
+    """Family of this handler."""
+
+    address:str = 'redis://localhost'
+    """
+    An address where to connect.
+        Can be one of the following:
+
+        * a Redis URI --- ``"redis://host:6379/0?encoding=utf-8"``;
+
+        * a (host, port) tuple --- ``('localhost', 6379)``;
+
+        * or a unix domain socket path string --- ``"/path/to/redis.sock"``.
+    """
+
     maxsize = 10
-    address = 'redis://localhost'
+    """Maximum number of connection to keep in pool.
+    """
+
     default_key = 'acrawler:items'
+    """Key of the list at which item's content is inserted.
+    """
 
     async def on_start(self):
         aioredis = check_import('aioredis')
@@ -147,9 +165,16 @@ class ItemToRedis(Handler):
 
 class ItemToMongo(Handler):
     family = 'Item'
+    """Family of this handler."""
+
     address = 'mongodb://localhost:27017'
+    """a full mongodb URI, in addition to a simple hostname"""
+
     db_name = ''
+    """name of targeted database"""
+
     col_name = ''
+    """name of targeted collection"""
 
     async def on_start(self):
         mo = check_import('motor.motor_asyncio')

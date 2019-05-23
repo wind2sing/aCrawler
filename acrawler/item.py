@@ -85,12 +85,11 @@ class Item(Task, collections.MutableMapping):
         return "<%s> (%s)" % ('Task Item', self.__class__.__name__)
 
 class DefaultItem(Item):
+    """ Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
+
+    It's the save as :class:`Item`. But its families has one more member 'DefaultItem'.
+    """
     pass
-
-
-class DebugItem(Item):
-    def custom_process(self, item):
-        logger.debug(item)
 
 
 class Processors(object):
@@ -220,11 +219,3 @@ class ParselItem(Item):
                 item[field] = processors(item[field])
 
         return item
-
-
-class TitleItem(ParselItem):
-    css_rules = {'title': 'title::text'}
-    field_processors = {'title': Processors.get_first}
-
-    def custom_process(self, content):
-        content.update({'info': 'this is TitleItem'})

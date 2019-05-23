@@ -31,11 +31,34 @@ logger = logging.getLogger(__name__)
 class Request(Task):
     """Request is a Task that execute :meth:`fetch` method.
 
-    :param url:
-    :param callback: should be a callable function or a list of functions. 
-        It will be passed to the response's task.
-    :param method:
-    :param request_config: will be passed to :meth:`aiohttp.ClientSession.request`.
+    Attributes:
+        url:
+        callback: should be a callable function or a list of functions. 
+            It will be passed to the corresponding response task.
+        family: this family will be appended in families and also passed to corresponding 
+            response task.
+        status_allowed: a list of allowed status integer. Otherwise any response task 
+            with `status!=200` will fail and retry.
+        meta: a dictionary to deliver information. It will be passed to :attr:`Response.meta`.
+        request_config: a dictionary, will be passed as keyword arguments 
+            to :meth:`aiohttp.ClientSession.request`.
+
+            acceptable keyword:
+
+                params - Dictionary or bytes to be sent in the query string of the new request
+
+                data - Dictionary, bytes, or file-like object to send in the body of the request
+
+                json - Any json compatible python object
+
+                headers - Dictionary of HTTP Headers to send with the request
+
+                cookies - Dict object to send with the request
+
+                allow_redirects - If set to False, do not follow redirects
+
+                timeout - Optional ClientTimeout settings structure, 5min total timeout by default.
+
     """
 
     def __init__(self, url: _LooseURL,
@@ -141,15 +164,20 @@ class Request(Task):
 class Response(Task):
     """Response is a Task that execute parse function.
 
-    :param status: HTTP status code of response, e.g. 200.
-    :param url:
-    :param cookies: HTTP cookies of response (Set-Cookie HTTP header).
-    :param headers: A case-insensitive multidict proxy with HTTP headers of response.
-    :param history: Preceding requests (earliest request first) if there were redirects.
-    :param body: The whole response’s body as `bytes`.
-    :param text: Read response’s body and return decoded `str`
-    :param json: Read response’s body as `JSON` if avaliable
-    :param request: Point to the request instance that generates this response.
+    Attributes:
+        status: HTTP status code of response, e.g. 200.
+        url: url as yarl URL
+        url_str: url as str
+        sel: a ``Selector``. See `Parsel <https://parsel.readthedocs.io/en/latest/>`_ for parsing rules.
+        meta: a dictionary to deliver information. It comes from :attr:`Request.meta`.
+        ok: True if `status==200` or status is allowed from :attr:`Request.status_allowed`
+        cookies: HTTP cookies of response (Set-Cookie HTTP header).
+        headers: A case-insensitive multidict proxy with HTTP headers of response.
+        history: Preceding requests (earliest request first) if there were redirects.
+        body: The whole response’s body as `bytes`.
+        text: Read response’s body and return decoded `str`
+        request: Point to the corresponding request object that generates this response.
+        callbacks: list of callback functions
     """
 
     def __init__(self,
@@ -259,10 +287,25 @@ async def file_save_callback(response: Response):
 
 
 class FileRequest(Request):
-    file_dir_key = '_fdir'
+    """ A derived Request to download files.
+    """
+
     file_dir = Path.cwd()
-    file_name_key = '_fname'
+    """Directly set the location the location where the file will save.
+    """
+
+    file_dir_key = '_fdir'
+    """It will try to call `self.meta.get(file_dir_key)` to get the location where the file will save.
+    """
+
     file_name = ''
+    """Directly set the file name. Otherwise name from url will be used as filename.
+    """
+
+    file_name_key = '_fname'
+    """It will try to call `self.meta.get(file_name_key)` to get the file name to save.
+    """
+
 
     def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
         if not callback:
