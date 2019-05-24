@@ -10,7 +10,8 @@ aCrawler
     :target: https://acrawler.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-🔍 A simple web-crawling framework, based on aiohttp.
+🔍 A powerful web-crawling framework, based on aiohttp.
+
 
 
 Feature
@@ -35,10 +36,14 @@ To install, simply use `pipenv <http://pipenv.org/>`_ (or pip):
    $ pipenv install acrawler
 
    (Optional)
-   $ pipenv install uvloop (only Linux/macOS, for faster asyncio event loop)
-   $ pipenv install aioredis (if you need Redis support)
-   $ pipenv install motor (if you need MongoDB support)
+   $ pipenv install uvloop      #(only Linux/macOS, for faster asyncio event loop)
+   $ pipenv install aioredis    #(if you need Redis support)
+   $ pipenv install motor       #(if you need MongoDB support)
 
+Documentation
+-------------
+Documentation and tutorial are available online at https://acrawler.readthedocs.io/ and in the ``docs``
+directory.
 
 Sample Code
 -----------

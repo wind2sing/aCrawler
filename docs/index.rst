@@ -18,9 +18,8 @@ aCrawler documentation
     :alt: Documentation Status
 
 
-🔍 A simple web-crawling framework, based on aiohttp.
+🔍 A powerful web-crawling framework, based on aiohttp.
 
-This project is at *very early* stage and may face breaking changes in the future.
 
 Feature
 -------
@@ -30,7 +29,7 @@ Feature
 * Schedule task with priority, fingerprint, exetime, recrawl...
 * Middleware: add handlers before or after tasks
 * Simple shortcuts to speed up scripting
-* Parse html conveniently with Parsel
+* Parse html conveniently with `Parsel <https://parsel.readthedocs.io/en/latest/>`_
 * Stop and Resume: crawl periodically and persistently
 * Distributed work support with Redis
 
