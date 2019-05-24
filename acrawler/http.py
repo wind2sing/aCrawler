@@ -255,11 +255,22 @@ class Response(Task):
             async for task in to_asyncgen(callback, self):
                 yield task
 
-    def urljoin(self, a):
+    def urljoin(self, a) -> str:
+        """ Accept a str (can be a relative url) or a Selector that has href attributes.
+
+        Returns:
+            return a absolute url.
+        """
+        url = None
+        if isinstance(a, list):
+            if len(a)>0:
+                a = a[0]
         if isinstance(a, str):
             url = a
         elif isinstance(a, Selector):
             url = a.attrib['href']
+        else:
+            raise ValueError('urljoin receive bad argument{}'.format(a))
         return urljoin(self.url_str, url)
 
     def add_callback(self, func: _Function):
