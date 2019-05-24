@@ -123,12 +123,25 @@ class ParselItem(Item):
     The selector will process item's fields with these rules.
     Finally, it will call processors to process each field.
 
+    Args: 
+        selector: Parsel's selector
+        default_rules: default value for item field
+        field_processors:  functions to process item field after scraping by rules
+        css_rules_first: use css selector and get the first result.
+        xpath_rules_first: use xpath selector and get the first result.
+        re_rules_first: use re selector and get the first result.
+        css_rules: use css selector and get a list with all results.
+        xpath_rules: use xpath selector and get a list with all results.
+        re_rules: use re selector and get a list with all results.
 
-    :param css_rules:
-    :param xpath_rules:
-    :param re_rules:
-    :param default_rules:
-    :field_processors:
+    Examples:
+        A simple example to extract title and upper the title::
+
+            class MyItem(ParselItem):
+                default_rules = {'spider':'this'}
+                css_rules_first = {'title': 'title::text'}
+                field_processors = {'title': [str.upper,]}
+
     """
 
     default_rules = {}
@@ -141,6 +154,7 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
+    default_processors = [Processors.strip]
     field_processors = {}
 
     def __init__(self, selector,
@@ -181,7 +195,7 @@ class ParselItem(Item):
         yield None
 
     def load(self):
-        """Main function to return an item."""
+        # Main function to return an item.
         item = {}
         for field, default in self.default_rules.items():
             item.update({field: default})
@@ -210,7 +224,11 @@ class ParselItem(Item):
 
 
     def process(self, item):
-        """Call field processors."""
+        # Call field processors.
+        for processor in self.default_processors:
+            for field in item.keys():
+                    item[field] = processor(item[field])
+
         for field, processors in self.field_processors.items():
             if isinstance(processors, list):
                 for processor in processors:
