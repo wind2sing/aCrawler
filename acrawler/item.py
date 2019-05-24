@@ -14,9 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 class Item(Task, collections.MutableMapping):
-    """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping.
-
-    :param extra: During initialing, :attr:`content` will be updated from `extra`.
+    """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping 
+    so it provide a dictionary interface. Also you can use `Item.content` to directly access content.
+    
+    Attributes:
+        extra: During initialing, :attr:`content` will be updated from extra at first.
+        content: Item stores information in the `content`, which is a dictionary.
     """
     log = False
 
@@ -77,7 +80,7 @@ class Item(Task, collections.MutableMapping):
             yield task
 
     def custom_process(self, content):
-        """can be rewritten for futhur processing of the item.
+        """can be rewritten for customed futhur processing of the item.
         """
         pass
 
@@ -87,7 +90,7 @@ class Item(Task, collections.MutableMapping):
 class DefaultItem(Item):
     """ Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
 
-    It's the save as :class:`Item`. But its families has one more member 'DefaultItem'.
+    It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
     pass
 
@@ -133,7 +136,7 @@ class ParselItem(Item):
         css_rules: use css selector and get a list with all results.
         xpath_rules: use xpath selector and get a list with all results.
         re_rules: use re selector and get a list with all results.
-
+    
     Examples:
         A simple example to extract title and upper the title::
 

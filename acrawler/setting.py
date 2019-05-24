@@ -1,3 +1,8 @@
+""" There are default settings for aCrawler.
+
+You can providing settings by writing a new `setting.py` in your working directory or writing 
+in :class:`~acrawler.crawler.Crawler`'s attributes.
+"""
 REQUEST_CONFIG = {
     'headers': {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'

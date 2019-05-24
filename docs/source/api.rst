@@ -64,6 +64,7 @@ Handlers
 
 .. autofunction:: acrawler.middleware.register
 
+.. autofunction:: acrawler.handlers.callback
 
 .. autoclass:: acrawler.middleware._Middleware
     :members:

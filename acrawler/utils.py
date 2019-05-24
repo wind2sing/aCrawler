@@ -1,5 +1,4 @@
-"""acrawler.utils
-
+"""
 This module provides utility functions that are used by aCrawler.
 Some are used for external consumption.
 
@@ -15,20 +14,13 @@ from pathlib import Path
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod, isgenerator
 
-#typing
+# typing
 from typing import Tuple, Dict, Any
 _Config = Dict[str, Any]
 
 
 def config_from_setting(module) -> Tuple[_Config, _Config, _Config]:
-    """Generate three types of config from `setting.py`.
-
-    Args:
-        module: the module returned from :func:`importlib.import_module`
-
-    Returns:
-        `config`, `request_config`, `middleware_config`
-    """
+    # Generate three types of config from `setting.py`.
     context = {}
     for key in dir(module):
         if not key.startswith('__'):
@@ -40,8 +32,7 @@ def config_from_setting(module) -> Tuple[_Config, _Config, _Config]:
 
 
 def merge_config(*configs: _Config) -> _Config:
-    """Merge different configs in order.
-    """
+    # Merge different configs in order.
     r = {}
     for config in configs:
         r = {**r, **config}
@@ -68,6 +59,8 @@ async def to_asyncgen(fn, *args, **kwargs):
 
 
 def check_import(name: str):
+    """Safely import module only if it's not imported
+    """
     if not name in sys.modules:
         mod = import_module(name)
         return mod
@@ -76,6 +69,8 @@ def check_import(name: str):
 
 
 def open_html(html, path=None):
+    """A helper function to debug your response. Usually called with `open_html(response.text)`.
+    """
     if not path:
         path = Path.home()/'.temp.html'
     url = 'file://' + str(path)
@@ -85,17 +80,23 @@ def open_html(html, path=None):
 
 
 def get_logger(name: str = 'user'):
+    """Get a logger which has the same configuration as crawler's logger.
+    """
     if not name.startswith('acrawler.'):
         name = 'acrawler.'+name
     return logging.getLogger(name)
 
 
-def redis_push_start_urls(key, url=None, address='redis://localhost'):
+def redis_push_start_urls(key: str, url: str = None, address: str = 'redis://localhost'):
+    """ When you are using redis_based distributed crawling, you can use this function to feed start_urls to redis. 
+    """
     asyncio.get_event_loop().run_until_complete(
         redis_push_start_urls_coro(key, url, address))
 
 
-async def redis_push_start_urls_coro(key, url=None, address='redis://localhost'):
+async def redis_push_start_urls_coro(key: str, url: str = None, address: str = 'redis://localhost'):
+    """Coroutine version of :func:`resid_push_start_urls`
+    """
     aioredis = import_module('aioredis')
     redis = await aioredis.create_redis_pool(address)
     if isinstance(url, list):

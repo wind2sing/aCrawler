@@ -12,7 +12,6 @@ aCrawler
 
 🔍 A simple web-crawling framework, based on aiohttp.
 
-This project is at *very early* stage and may face breaking changes in the future.
 
 Feature
 -------
@@ -22,7 +21,7 @@ Feature
 * Schedule task with priority, fingerprint, exetime, recrawl...
 * Middleware: add handlers before or after tasks
 * Simple shortcuts to speed up scripting
-* Parse html conveniently with Parsel
+* Parse html conveniently with `Parsel <https://parsel.readthedocs.io/en/latest/>`_
 * Stop and Resume: crawl periodically and persistently
 * Distributed work support with Redis
 
@@ -36,14 +35,68 @@ To install, simply use `pipenv <http://pipenv.org/>`_ (or pip):
    $ pipenv install acrawler
 
    (Optional)
-   $ pipenv install uvloop (only Linux/macOS)
+   $ pipenv install uvloop (only Linux/macOS, for faster asyncio event loop)
    $ pipenv install aioredis (if you need Redis support)
    $ pipenv install motor (if you need MongoDB support)
 
-QuickStart
-----------
 
-Your first script
+Sample Code
+-----------
+
+Scrape quotes.toscrape.com
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: python
+
+   # Scrape quotes from http://quotes.toscrape.com/
+   from acrawler import Parser, Crawler, Processors, ParselItem, get_logger, Request
+
+   logger = get_logger('quotes')
+
+
+   def get_twenty_words(value):
+       return value[:20]
+
+
+   class QuoteItem(ParselItem):
+       log = True
+       default_rules = {'type': 'quote'}
+       css_rules_first = {'author': 'small.author::text'}
+       xpath_rules_first = {'text': './/span[@class="text"]/text()'}
+
+       field_processors = {
+           'text': get_twenty_words,
+       }
+
+
+   class AuthorItem(ParselItem):
+       css_rules_first = {'name': 'h3.author-title::text',
+                          'born': 'span.author-born-date::text',
+                          }
+
+
+   class QuoteCrawler(Crawler):
+       config = {}
+
+       start_urls = ['http://quotes.toscrape.com/page/1/', ]
+
+       main_page = r'quotes.toscrape.com/page/\d+'
+       author_page = r'quotes.toscrape.com/author/.*'
+       parsers = [Parser(in_pattern=main_page,
+                         follow_patterns=[main_page, author_page],
+                         item_type=QuoteItem,
+                         css_divider='.quote'
+                         ),
+                  Parser(in_pattern=author_page, item_type=AuthorItem)
+                  ]
+
+
+   if __name__ == '__main__':
+       QuoteCrawler().run()
+
+
+
+Scrape v2ex.com
 ^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
@@ -81,70 +134,6 @@ Your first script
        V2EXCrawler().run()
 
 
-* 
-  ``start_requests()`` is the entry point. Default implementaion will yield ``Request`` form Crawler's ``start_urls`` List.
-
-* 
-  Any ``Request`` yielded from ``start_requests()`` will combine ``crawler.parse()`` to its callbacks and passes all callbacks to ``Response``
-
-* 
-  ``Response`` executes by calling its callbacks. Callback funtion should accepts one argument ``response``. ``response.sel`` is a ``Selector``. See `Parsel <https://parsel.readthedocs.io/en/latest/>`_ for parsing rules.
-
-
-Sample code
------------
-
-.. code-block:: python
-
-   # Scrape quotes from http://quotes.toscrape.com/
-   from acrawler import Parser, Crawler, Processors, ParselItem, get_logger, Request
-
-   logger = get_logger('quotes')
-
-
-   def get_twenty_words(value):
-       return value[:20]
-
-
-   class QuoteItem(ParselItem):
-       log = True
-       default_rules = {'type': 'quote'}
-       css_rules_first = {'author': 'small.author::text'}
-       xpath_rules_first = {'text': './/span[@class="text"]/text()'}
-
-       field_processors = {
-           'text': get_twenty_words,
-       }
-
-
-   class AuthorItem(ParselItem):
-       css_rules_first = {'name': 'h3.author-title::text',
-                          'born': 'span.author-born-date::text',
-                          }
-       field_processors = {
-           'name': [Processors.strip,],
-       }
-
-
-   class QuoteCrawler(Crawler):
-       config = {}
-
-       start_urls = ['http://quotes.toscrape.com/page/1/', ]
-
-       main_page = r'quotes.toscrape.com/page/\d+'
-       author_page = r'quotes.toscrape.com/author/.*'
-       parsers = [Parser(in_pattern=main_page,
-                         follow_patterns=[main_page, author_page],
-                         item_type=QuoteItem,
-                         css_divider='.quote'
-                         ),
-                  Parser(in_pattern=author_page, item_type=AuthorItem)
-                  ]
-
-
-   if __name__ == '__main__':
-       QuoteCrawler().run()
-
 See `examples <examples/>`_.
 
 Todo
@@ -155,4 +144,3 @@ Todo
 * Absolute links support
 * Better logging
 * Monitor all your crawlers
-* Documentation

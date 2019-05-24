@@ -14,22 +14,21 @@ logger = logging.getLogger(__name__)
 class Parser:
     """A basic parser.
 
-    It is a shortcut class for parsing response. If a response's callback is a Parser,
-    then crawler will call Parser's parse method to yield new Request Task or Item Task.
+    It is a shortcut class for parsing response. If there are parsers int :attr:Crawler.parsers,
+    then crawler will call Parser's parse method with the response to yield new Request Task or Item Task.
 
-    Attribute:
+    Args:
         in_pattern: a string as a regex pattern or a function.
         follow_patterns: a list containing strings as regex patterns or a function.
-        selectors_loader: a function, receive response.text and yield Selectors for further parsing.
+        item_type: a custom item class to store results.
+        css_divider: You may have many pieces in one response. Yield them in different selectors by providing a css_divider.
 
-        item_type: a custom item class to contain result.
-        item_processor: a function that deal with the result. Ex. save the result to the database.
     """
     in_pattern = ''
     follow_patterns = []
     item_types = []
 
-    css_divider = None
+    css_divider: str = None
 
     def _selectors_loader(self, html):
         """You may have many pieces in one response. Yield them in different selectors."""

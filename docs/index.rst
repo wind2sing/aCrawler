@@ -54,7 +54,7 @@ To install, simply use `pipenv <http://pipenv.org/>`_ (or pip):
    :maxdepth: 2
    :caption: Contents:
 
-
+   source/tutorial
    source/concept
    source/api
 

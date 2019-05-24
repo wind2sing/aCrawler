@@ -23,10 +23,6 @@ class AuthorItem(ParselItem):
     css_rules_first = {'name': 'h3.author-title::text',
                        'born': 'span.author-born-date::text',
                        }
-    field_processors = {
-        'name': [Processors.strip],
-    }
-
 
 class QuoteCrawler(Crawler):
     config = {'LOG_LEVEL': 'DEBUG'}
