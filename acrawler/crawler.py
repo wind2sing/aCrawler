@@ -454,8 +454,8 @@ class Crawler(object):
             tag = self.config.get(
                 'PERSISTENT_NAME', None) or self.__class__.__name__
             fname = '.' + tag
-            self.fi_tasks: Path = Path.cwd() / (fname + '.tasks')
-            self.fi_df: Path = Path.cwd() / (fname + '.df')
+            self.fi_tasks: Path = Path.cwd() / ('acrawler' + fname + '.tasks')
+            self.fi_df: Path = Path.cwd() / ('acrawler' + fname + '.df')
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, 'rb') as f:
                     tasks = pickle.load(f)
@@ -508,6 +508,10 @@ class Crawler(object):
                 f'Statistic:{family:<15} ~ success {success}, failure {failure}')
         logger.info('Normal  Scheduler tasks left:{}'.format(await self.sdl.q.get_length()))
         logger.info('Request Scheduler tasks left:{}'.format(await self.sdl_req.q.get_length()))
+
+    def __getstate__(self):
+        # disable pickling
+        return {}
 
 
 class CrawlerStart(SpecialTask):
