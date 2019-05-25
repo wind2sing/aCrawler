@@ -66,6 +66,7 @@ class Request(Task):
                  method: str = 'GET',
                  request_config: dict = None,
                  status_allowed: list = None,
+                 encoding = None,
 
                  # Below are paras for parent class
                  dont_filter: bool = False,
@@ -96,6 +97,7 @@ class Request(Task):
         self.session = None
         self.response: Response = None
         self.httpfamily = family
+        self.encoding = encoding
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -131,7 +133,7 @@ class Request(Task):
                     self.method, self.url, **self.request_config) as cresp:
 
                 body = await cresp.read()
-                encoding = cresp.get_encoding()
+                encoding = self.encoding or cresp.get_encoding()
 
                 self.response = await Response.from_ClientResponse(url=cresp.url,
                                                                    status=cresp.status,
@@ -237,7 +239,7 @@ class Response(Task):
                 self._text = self.body.decode(self.encoding)
             except Exception as e:
                 logger.debug('({}) {}'.format(self.url_str, e))
-                self._text = str(self.body)
+                self._text = self.body.decode(self.encoding, 'ignore')
         return self._text
 
     @property
