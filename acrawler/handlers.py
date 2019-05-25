@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Request Part
 
+
 class RequestPrepareSession(Handler):
     family = 'Request'
 
@@ -41,6 +42,7 @@ class RequestPrepareSession(Handler):
 
 class ResponseCheckStatus(Handler):
     family = 'Response'
+
     def on_start(self):
         self.status_allowed = self.crawler.config.get('STATUS_ALLOWED')
         self.allow_all = (self.status_allowed == [])
@@ -48,8 +50,8 @@ class ResponseCheckStatus(Handler):
 
     async def handle_before(self, response):
         if self.allow_all:
-            return 
-        if response.status !=200:
+            return
+        if response.status != 200:
             if self.deny_all or not response.status in self.status_allowed:
                 if not response.ok:
                     logger.error('Task failed {}'.format(response))
@@ -124,7 +126,7 @@ class ItemToRedis(Handler):
     family = 'Item'
     """Family of this handler."""
 
-    address:str = 'redis://localhost'
+    address: str = 'redis://localhost'
     """
     An address where to connect.
         Can be one of the following:
@@ -176,6 +178,8 @@ class ItemToMongo(Handler):
     col_name = ''
     """name of targeted collection"""
 
+    primary_key = ''
+
     async def on_start(self):
         mo = check_import('motor.motor_asyncio')
         self.client = mo.AsyncIOMotorClient(self.address)
@@ -184,7 +188,13 @@ class ItemToMongo(Handler):
         logger.info(f'Connecting to MongoDB... {self.col}')
 
     async def handle_after(self, item):
-        self.col.insert_one(item.content)
+        if self.primary_key:
+            self.col.update_one({self.primary_key: item[self.primary_key]},
+                                {'$set': item.content},
+                                upsert=True
+                                )
+        else:
+            self.col.insert_one(item.content)
 
     async def on_close(self):
         self.client.close()
@@ -205,7 +215,8 @@ class CrawlerStartAddon(Handler):
 
     async def handle_after(self, task):
         if self.crawler.redis_enable:
-            self.crawler.loop.create_task(self._next_request_from_redis_start())
+            self.crawler.loop.create_task(
+                self._next_request_from_redis_start())
 
     async def _next_request_from_redis_start(self):
         while True:
