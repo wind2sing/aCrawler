@@ -117,7 +117,7 @@ Here is one of the items::
     'metascore': '78',
     'rating': '8.8',
     'rating_count': '407,691',
-    'starts': ['Robert Downey Jr.', 'Chris Evans', 'Mark Ruffalo'],
+    'stars': ['Robert Downey Jr.', 'Chris Evans', 'Mark Ruffalo'],
     'time': 181,
     'title': 'Avengers: Endgame',
     'url': 'https://www.imdb.com/title/tt4154796/',
