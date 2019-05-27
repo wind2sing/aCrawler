@@ -114,7 +114,7 @@ class Task:
 
     def _fingerprint(self):
         """should be rewritten as a fingerprint calculator in the subclass."""
-        raise NotImplementedError
+        return self.__hash__()
 
     def __getstate__(self):
         state = self.__dict__

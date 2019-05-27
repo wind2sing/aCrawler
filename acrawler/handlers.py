@@ -54,7 +54,7 @@ class ResponseCheckStatus(Handler):
         if response.status != 200:
             if self.deny_all or not response.status in self.status_allowed:
                 if not response.ok:
-                    logger.error('Task failed {}'.format(response))
+                    logger.error('Response failed {}, might retry'.format(response))
                     task = response.request
                     if task.tries < self.crawler.max_tries:
                         task.dont_filter = True
