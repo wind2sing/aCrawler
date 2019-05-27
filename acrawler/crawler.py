@@ -153,6 +153,7 @@ class Counter:
         self.__dict__['_finished'] = asyncio.Event()
         self.__dict__['_finished'].set()
 
+
 class Crawler(object):
     """This is the base crawler, from which all crawlers that you write yourself must inherit.
 
@@ -212,8 +213,6 @@ class Crawler(object):
     config: _Config = {}
     """Config dictionary for this crawler. See avaliable options in `setting`.
     """
-
-
 
     def __init__(self):
 
@@ -416,7 +415,7 @@ class Crawler(object):
 
     async def ashutdown(self, signal=None):
         # shutdown method.
-        # 
+        #
         # - cancel all Request workers
         # - wait for all nonRequest workers
         # - deal with keyboardinterrupt.
@@ -532,7 +531,10 @@ class CrawlerStart(SpecialTask):
         async for task in to_asyncgen(self.crawler.start_requests):
             if isinstance(task, Request):
                 task.add_callback(self.crawler.parse)
-                if await self.crawler.schedulers['Request'].produce(task):
+                if await self.crawler.sdl_req.produce(task):
+                    self.crawler.counter.task_add()
+            elif isinstance(task, Task):
+                if await self.crawler.sdl.produce(task):
                     self.crawler.counter.task_add()
 
 
