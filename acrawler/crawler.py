@@ -15,6 +15,7 @@ from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
 from acrawler.middleware import middleware
 from acrawler.utils import merge_config, config_from_setting, to_asyncgen
 from acrawler.item import DefaultItem
+from acrawler.exceptions import SkipTaskError
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from pprint import pformat
@@ -59,13 +60,14 @@ class Worker:
                 try:
                     added = False
                     async for new_task in task.execute():
-                        if isinstance(new_task, Exception):
-                            raise new_task
                         added = await self.crawler.add_task(new_task)
+                except SkipTaskError as e:
+                    logger.debug('Skip task {}'.format(task))
+                    pass
                 except asyncio.CancelledError as e:
                     raise e
                 except Exception as e:
-                    logger.error('{} execution faces {}'.format(task, e))
+                    logger.error('Execution of {} faces error: {}'.format(task, e))
                     logger.error(traceback.format_exc())
                     exception = True
 
