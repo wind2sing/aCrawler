@@ -189,12 +189,12 @@ class ItemToMongo(Handler):
 
     async def handle_after(self, item):
         if self.primary_key:
-            self.col.update_one({self.primary_key: item[self.primary_key]},
+            await self.col.update_one({self.primary_key: item[self.primary_key]},
                                 {'$set': item.content},
                                 upsert=True
                                 )
         else:
-            self.col.insert_one(item.content)
+            await self.col.insert_one(item.content)
 
     async def on_close(self):
         self.client.close()

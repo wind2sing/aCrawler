@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.6](https://github.com/pansenlin30/aCrawler/compare/v0.0.5...v0.0.6) (2019-05-27)
+
+
+### Bug Fixes
+
+* **crawler:** correct pickling methods ([11dfa0c](https://github.com/pansenlin30/aCrawler/commit/11dfa0c))
+* **http:** provide your encoding ([e7ad7f2](https://github.com/pansenlin30/aCrawler/commit/e7ad7f2))
+
+
+### Features
+
+* **examples:** imdb popular movies ([1791d82](https://github.com/pansenlin30/aCrawler/commit/1791d82))
+* **handlers:** ItemToMongo supports update operation ([557c0b5](https://github.com/pansenlin30/aCrawler/commit/557c0b5))
+* **item:** ParselItem supports default processors (strip by default) ([0826548](https://github.com/pansenlin30/aCrawler/commit/0826548))
+* **parse:** urljoin now also accepts list ([463ab93](https://github.com/pansenlin30/aCrawler/commit/463ab93))
+
+
+
 ### [0.0.5](https://github.com/pansenlin30/aCrawler/compare/v0.0.4...v0.0.5) (2019-05-21)
 
 
