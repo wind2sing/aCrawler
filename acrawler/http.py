@@ -87,7 +87,6 @@ class Request(Task):
                          )
 
         self.url = URL(url)
-        self.url_str = str(self.url)
         self.method = method
         self.status_allowed = status_allowed
         self.callbacks = []
@@ -98,6 +97,10 @@ class Request(Task):
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
+    
+    @property
+    def url_str(self):
+        return self.url.human_repr()
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
@@ -114,7 +117,7 @@ class Request(Task):
         .. todo::write a better hashing function for request.
         """
         fp = hashlib.sha1()
-        fp.update(str(self.url).encode())
+        fp.update(self.url_str.encode())
         return fp.hexdigest()
 
     async def _execute(self, **kwargs):
@@ -198,7 +201,6 @@ class Response(Task):
         dont_filter = kwargs.pop('dont_filter', True)
         super().__init__(dont_filter=dont_filter, **kwargs)
         self.url = url
-        self.url_str = str(url)
         self.status = status
         self.cookies = cookies
         self.headers = headers
@@ -210,6 +212,7 @@ class Response(Task):
         self.callbacks = callbacks
         self.ok = (self.status == 200) or (self.request.status_allowed == []) or (
             (self.request.status_allowed) and (self.status in self.request.status_allowed))
+        self.bind_cbs = False
 
         self._text = None
         self._sel: Selector = None
@@ -250,6 +253,10 @@ class Response(Task):
             except Exception as e:
                 logger.error(e)
         return self._sel
+
+    @property
+    def url_str(self):
+        return self.url.human_repr()
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""

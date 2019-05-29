@@ -94,15 +94,17 @@ class ResponseAddCallback(Handler):
     callback_table = {}
 
     def handle_before(self, response: _Response):
-        for parser in self.crawler.parsers:
-            response.add_callback(parser.parse)
+        if not response.bind_cbs:
+            for parser in self.crawler.parsers:
+                response.add_callback(parser.parse)
 
-        if response.primary_family in self.callback_table:
-            for fn in self.callback_table[response.primary_family]:
-                sig = inspect.signature(fn)
-                if 'self' in sig.parameters:
-                    fn = functools.partial(fn, self.crawler)
-                response.add_callback(fn)
+            if response.primary_family in self.callback_table:
+                for fn in self.callback_table[response.primary_family]:
+                    sig = inspect.signature(fn)
+                    if 'self' in sig.parameters:
+                        fn = functools.partial(fn, self.crawler)
+                    response.add_callback(fn)
+            response.bind_cbs = True
 
     @classmethod
     def callback(cls, family):
