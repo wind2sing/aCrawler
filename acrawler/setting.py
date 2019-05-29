@@ -35,8 +35,11 @@ MAX_TRIES: int = 3
 MAX_REQUESTS: int = 4
 """A crawler will obtain `MAX_REQUESTS` request concurrently."""
 
-MAX_REQUESTS_PER_HOST: dict = {}
-"""Limit simultaneous connections to the same endpoint(host, port, is_ssl)."""
+MAX_REQUESTS_PER_HOST: int = 0
+"""Limit simultaneous connections to the same host."""
+
+MAX_REQUESTS_SPECIAL_HOST: dict = {}
+"""Limit simultaneous connections with a host-limit dictionary."""
 
 REDIS_ENABLE = False
 """Set to True if you want distributed crawling support."""

@@ -30,9 +30,7 @@ class RequestPrepareSession(Handler):
     family = 'Request'
 
     async def on_start(self):
-        lph = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
-        self.connector = TCPConnector(limit_per_host=lph)
-        self.session = ClientSession(connector=self.connector)
+        self.session = ClientSession()
         self.crawler._session = self.session
 
     async def handle_before(self, task):

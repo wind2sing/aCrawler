@@ -45,9 +45,10 @@ class Worker:
     - catch the result of a task's execution
     """
 
-    def __init__(self, crawler: 'Crawler', sdl: Scheduler = None, ):
+    def __init__(self, crawler: 'Crawler', sdl: Scheduler = None, is_req: bool = False):
         self.crawler = crawler
         self.sdl = sdl or Scheduler()
+        self.is_req = is_req
         self._max_tries = self.crawler.max_tries
         self.current_task = None
 
@@ -58,9 +59,10 @@ class Worker:
                 task = self.current_task
                 exception = False
                 try:
-                    added = False
+                    if self.is_req:
+                        self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
-                        added = await self.crawler.add_task(new_task)
+                        await self.crawler.add_task(new_task)
                 except SkipTaskError as e:
                     logger.debug('Skip task {}'.format(task))
                 except ReScheduleError as e:
@@ -70,13 +72,18 @@ class Worker:
                     self.crawler.counter.task_done(task, -1)
                     await self.crawler.add_task(task, dont_filter=True)
                     self.current_task = None
+                    await asyncio.sleep(0)
                     continue
                 except asyncio.CancelledError as e:
                     raise e
                 except Exception as e:
-                    logger.error('Execution of {} faces error: {}'.format(task, e))
+                    logger.error(
+                        'Execution of {} faces error: {}'.format(task, e))
                     logger.error(traceback.format_exc())
                     exception = True
+                
+                if self.is_req:
+                    self.crawler.counter.release_req(task)
 
                 retry = False
                 if exception:
@@ -113,15 +120,25 @@ class Worker:
 
 
 class Counter:
-    """A global counter records unfinished count of tasks.
+    """A global counter records unfinished count of tasks and manage requests-limits.
     """
 
-    def __init__(self, loop=None):
+    def __init__(self, crawler, loop=None):
+        self.crawler = crawler
         self.counts = {}
         self._unfinished_tasks = 0
         self._finished = asyncio.Event(loop=loop)
         self._finished.set()
         self.always_lock = False
+
+        self.conf = self.crawler.config.get(
+            'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
+        self.hosts = self.conf.keys()
+        self.check = len(self.hosts) > 0
+
+        self.uni = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
+        self.uniconf = {}
+        self.unicheck = self.uni > 0
 
     def lock_always(self):
         self._finished.clear()
@@ -140,7 +157,7 @@ class Counter:
 
     def task_done(self, task, success: int = 1):
         for family in task.families:
-            if success!= -1:
+            if success != -1:
                 rc = self.counts.setdefault(family, [0, 0])
                 rc[success] += 1
         if self.always_lock:
@@ -151,6 +168,33 @@ class Counter:
             self._unfinished_tasks -= 1
             if self._unfinished_tasks == 0:
                 self._finished.set()
+
+    def require_req(self, req):
+        if self.unicheck:
+            count = self.uniconf.setdefault(req.url.host, self.uni)
+            if count > 0:
+                self.uniconf[req.url.host] -= 1
+            else:
+                raise ReScheduleError()
+
+        if self.check:
+            req.chosts = []
+            for host in self.hosts:
+                if host in req.url.host:
+                    req.chosts.append(host)
+                    if self.conf[host] > 0:
+                        self.conf[host] -= 1
+                        continue
+                    else:
+                        raise ReScheduleError()
+
+    def release_req(self, req):
+        if self.unicheck:
+            self.uniconf[req.url.host] += 1
+
+        if self.check and req.chosts:
+            for host in req.chosts:
+                self.conf[host] += 1
 
     def __getstate__(self):
         state = self.__dict__
@@ -221,7 +265,6 @@ class Crawler(object):
 
         self.loop = asyncio.get_event_loop()
 
-
         self._form_config()
         self._logging_config()
 
@@ -274,9 +317,9 @@ class Crawler(object):
         try:
             self.loop.create_task(self._log_status_timer())
             for _ in range(self.max_requests):
-                self.workers.append(Worker(self, self.schedulers['Request']))
+                self.workers.append(Worker(self, self.schedulers['Request'], is_req=True))
             for _ in range(self.max_workers):
-                self.workers.append(Worker(self, self.schedulers['Default']))
+                self.workers.append(Worker(self, self.schedulers['Default'], is_req=False))
             logger.info('Create %d request workers', self.max_requests)
             logger.info('Create %d workers', self.max_workers)
             self.start_time = time.time()
@@ -366,7 +409,7 @@ class Crawler(object):
 
     def _create_schedulers(self):
         # we maintain two schedulers, request task / non-request task.
-        self.counter = Counter(loop=self.loop)
+        self.counter = Counter(crawler=self, loop=self.loop)
         self.redis_enable = self.config.get('REDIS_ENABLE', False)
         self.persistent = self.config.get('PERSISTENT', False)
 
