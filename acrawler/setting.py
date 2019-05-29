@@ -15,7 +15,7 @@ MIDDLEWARE_CONFIG = {
     'acrawler.handlers.RequestMergeConfig': 800,
     'acrawler.handlers.RequestDelay': 700,
     'acrawler.handlers.ResponseAddCallback': 900,
-    'acrawler.handlers.ResponseCheckStatus':800,
+    'acrawler.handlers.ResponseCheckStatus': 800,
     'acrawler.handlers.CrawlerStartAddon': 1000,
 }
 
@@ -29,6 +29,8 @@ LOG_LEVEL = 'INFO'
 STATUS_ALLOWED = None
 """A list of intergers representing status codes other than 200."""
 
+MAX_REQUESTS_PER_HOST: int = 0
+"""Limit simultaneous connections to the same endpoint(host, port, is_ssl)."""
 
 REDIS_ENABLE = False
 """Set to True if you want distributed crawling support."""

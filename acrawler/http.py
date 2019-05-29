@@ -149,12 +149,12 @@ class Request(Task):
                                                                    family=self.httpfamily)
                 rt = self.response
                 logger.info(rt)
+                return rt
         except Exception as e:
-            rt = e
+            raise e
         finally:
             if to_close:
                 await self.session.close()
-        return rt
 
     def __str__(self):
         return "<%s> (%s)" % ('Task Request', self.url)

@@ -9,7 +9,7 @@ import logging
 from acrawler.http import Request
 from acrawler.utils import check_import
 import asyncio
-from aiohttp import ClientSession
+from aiohttp import ClientSession, TCPConnector
 
 # Typing
 import acrawler
@@ -30,7 +30,9 @@ class RequestPrepareSession(Handler):
     family = 'Request'
 
     async def on_start(self):
-        self.session = ClientSession()
+        lph = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
+        self.connector = TCPConnector(limit_per_host=lph)
+        self.session = ClientSession(connector=self.connector)
         self.crawler._session = self.session
 
     async def handle_before(self, task):
@@ -54,7 +56,8 @@ class ResponseCheckStatus(Handler):
         if response.status != 200:
             if self.deny_all or not response.status in self.status_allowed:
                 if not response.ok:
-                    logger.error('Response failed {}, might retry'.format(response))
+                    logger.error(
+                        'Response failed {}, might retry'.format(response))
                     task = response.request
                     if task.tries < self.crawler.max_tries:
                         task.dont_filter = True
@@ -192,9 +195,9 @@ class ItemToMongo(Handler):
     async def handle_after(self, item):
         if self.primary_key:
             await self.col.update_one({self.primary_key: item[self.primary_key]},
-                                {'$set': item.content},
-                                upsert=True
-                                )
+                                      {'$set': item.content},
+                                      upsert=True
+                                      )
         else:
             await self.col.insert_one(item.content)
 

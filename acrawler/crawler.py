@@ -171,9 +171,9 @@ class Crawler(object):
     """
 
     max_tries: int = 3
-    """A task will try to execute for `max_tries` times before complete fail."""
+    """A task will try to execute for `max_tries` times before a complete fail."""
 
-    max_requests: int = 5
+    max_requests: int = 4
     """A crawler will obtain `max_requests` request concurrently."""
 
     start_urls: List[str] = []
