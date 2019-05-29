@@ -15,7 +15,7 @@ from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
 from acrawler.middleware import middleware
 from acrawler.utils import merge_config, config_from_setting, to_asyncgen
 from acrawler.item import DefaultItem
-from acrawler.exceptions import SkipTaskError
+from acrawler.exceptions import SkipTaskError, ReScheduleError
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from pprint import pformat
@@ -63,7 +63,11 @@ class Worker:
                         added = await self.crawler.add_task(new_task)
                 except SkipTaskError as e:
                     logger.debug('Skip task {}'.format(task))
-                    pass
+                except ReScheduleError as e:
+                    self.crawler.counter.task_done(task, -1)
+                    await self.crawler.add_task(task, dont_filter=True)
+                    self.current_task = None
+                    continue
                 except asyncio.CancelledError as e:
                     raise e
                 except Exception as e:
@@ -91,8 +95,7 @@ class Worker:
                     task.tries = 0
                     task.init_time = time.time()
                     task.exetime = task.last_crawl_time + task.recrawl
-                    task.dont_filter = True
-                    await self.crawler.add_task(task)
+                    await self.crawler.add_task(task, dont_filter=True)
 
                 self.current_task = None
         except asyncio.CancelledError as e:
@@ -134,8 +137,9 @@ class Counter:
 
     def task_done(self, task, success: int = 1):
         for family in task.families:
-            rc = self.counts.setdefault(family, [0, 0])
-            rc[success] += 1
+            if success!= -1:
+                rc = self.counts.setdefault(family, [0, 0])
+                rc[success] += 1
         if self.always_lock:
             self._unfinished_tasks -= 1
         else:
@@ -305,7 +309,7 @@ class Crawler(object):
         """
         yield None
 
-    async def add_task(self, new_task: 'acrawler.task.Task') -> bool:
+    async def add_task(self, new_task: 'acrawler.task.Task', dont_filter=False) -> bool:
         """ Interface to add new Task to schedulers.
 
         Args:
@@ -317,12 +321,12 @@ class Crawler(object):
         added = False
         if isinstance(new_task, Task):
             if isinstance(new_task, Request):
-                added = await self.sdl_req.produce(new_task)
+                added = await self.sdl_req.produce(new_task, dont_filter=dont_filter)
             else:
-                added = await self.sdl.produce(new_task)
+                added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         elif isinstance(new_task, dict):
             item = DefaultItem(extra=new_task)
-            added = await self.sdl.produce(item)
+            added = await self.sdl.produce(item, dont_filter=dont_filter)
         if added:
             self.counter.task_add()
         return added

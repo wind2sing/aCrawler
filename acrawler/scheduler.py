@@ -269,8 +269,8 @@ class Scheduler:
         await self.df.start()
         await self.q.start()
 
-    async def produce(self, task) -> bool:
-        if task.dont_filter:
+    async def produce(self, task, dont_filter=False) -> bool:
+        if task.dont_filter or dont_filter:
             await self.q.push(task)
             return True
         else:

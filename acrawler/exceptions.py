@@ -5,3 +5,7 @@ class SkipTaskError(Exception):
     pass
 
 
+class ReScheduleError(Exception):
+    """Prevent the task from execution and reschedult it (add it back to scheduler).
+    """
+    pass

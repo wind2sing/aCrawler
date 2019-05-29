@@ -93,7 +93,6 @@ class DefaultItem(Item):
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
     
-    log = True
 
 
 class Processors(object):
