@@ -8,4 +8,8 @@ class SkipTaskError(Exception):
 class ReScheduleError(Exception):
     """Prevent the task from execution and reschedult it (add it back to scheduler).
     """
-    pass
+
+    def __init__(self, defer: int = 0, recrawl: int = None, *args, **kwargs):
+        self.defer = defer
+        self.recrawl = recrawl
+        super().__init__(*args, **kwargs)

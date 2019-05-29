@@ -64,6 +64,9 @@ class Worker:
                 except SkipTaskError as e:
                     logger.debug('Skip task {}'.format(task))
                 except ReScheduleError as e:
+                    task.exetime = time.time() + e.defer
+                    if e.recrawl:
+                        task.recrawl = e.recrawl
                     self.crawler.counter.task_done(task, -1)
                     await self.crawler.add_task(task, dont_filter=True)
                     self.current_task = None
