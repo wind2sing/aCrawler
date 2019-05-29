@@ -9,7 +9,7 @@ def get_twenty_words(value):
 
 
 class QuoteItem(ParselItem):
-    log = True
+    # log = True
     default_rules = {'type': 'quote'}
     css_rules_first = {'author': 'small.author::text'}
     xpath_rules_first = {'text': './/span[@class="text"]/text()'}
@@ -24,8 +24,12 @@ class AuthorItem(ParselItem):
                        'born': 'span.author-born-date::text',
                        }
 
+
 class QuoteCrawler(Crawler):
-    config = {'LOG_LEVEL': 'DEBUG'}
+
+    config = {'LOG_LEVEL': 'DEBUG',
+              'MAX_REQUESTS': 4
+              }
 
     start_urls = ['http://quotes.toscrape.com/page/1/', ]
 

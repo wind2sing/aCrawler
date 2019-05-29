@@ -20,10 +20,9 @@ def img_dir():
 
 class WHCrawler(Crawler):
     config = {
-        'LOG_LEVEL': 'INFO'
+        'LOG_LEVEL': 'INFO',
+        'MAX_REQUESTS': 10,
     }
-    
-    max_requests = 10
     
 
     async def start_requests(self):

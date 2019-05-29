@@ -49,9 +49,8 @@ class ProxyCrawler(Crawler):
 
     config = {
         'DOWNLOAD_DELAY': 1,
+        'MAX_REQUESTS': 2,
     }
-
-    max_requests = 2
 
     parsers = [Parser(css_divider='table tr', item_type=ProxyItem)]
 

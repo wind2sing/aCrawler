@@ -19,11 +19,11 @@ class OneItem(Item):
 
 
 class BiliInfoCrawler(Crawler):
-    max_requests = 5
-    max_workers = 20
 
     config = {
         'DOWNLOAD_DELAY': 0.2,
+        'MAX_REQUESTS': 5,
+        'MAX_WORKERS': 20,
     }
 
     async def start_requests(self):

@@ -23,7 +23,9 @@ class MovieItem(ParselItem):
 
 class MyCrawler(Crawler):
     start_urls = ['https://movie.douban.com/top250']
-    max_requests = 2
+    config = {
+        'MAX_REQUESTS': 2,
+    }
 
     main_page = 'movie.douban.com/top250.*'
     sub_page = 'movie.douban.com/subject/\d+/$'

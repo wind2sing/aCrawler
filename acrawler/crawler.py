@@ -170,12 +170,6 @@ class Crawler(object):
 
     """
 
-    max_tries: int = 3
-    """A task will try to execute for `max_tries` times before a complete fail."""
-
-    max_requests: int = 4
-    """A crawler will obtain `max_requests` request concurrently."""
-
     start_urls: List[str] = []
     """Ready for vanilla :meth:`start_requests`"""
 
@@ -226,11 +220,14 @@ class Crawler(object):
     def __init__(self):
 
         self.loop = asyncio.get_event_loop()
-        if not hasattr(self, 'max_workers'):
-            self.max_workers = self.max_requests
+
 
         self._form_config()
         self._logging_config()
+
+        self.max_requests = self.config.get('MAX_REQUESTS', 4)
+        self.max_workers = self.config.get('MAX_WORKERS', self.max_requests)
+        self.max_tries = self.config.get('MAX_TRIES', 3)
 
         self.counter: Counter = None
         self.shedulers: Dict[str, 'Scheduler'] = {}

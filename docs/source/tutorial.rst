@@ -14,7 +14,7 @@ First, we start our script with rewritting :meth:`~acrawler.acrawler.Crawler.sta
 
     from acrawler import Crawler, Request
     class IMDBCrawler(Crawler):
-        max_requests = 6
+        config = {'MAX_REQUESTS': 6}
 
         async def start_requests(self):
             yield Request('https://www.imdb.com/chart/moviemeter')
@@ -154,6 +154,7 @@ If we want to recrawl the index page every 4 hour starting from a specific time,
     import time
     class IMDBCrawler(Crawler):
         config = {
+            'MAX_REQUESTS': 6,
             'PERSISTENT': True,
             'PERSISTENT_NAME': 'IMDBv0.1'
         }

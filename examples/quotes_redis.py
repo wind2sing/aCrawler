@@ -32,6 +32,7 @@ class AuthorItem(ParselItem):
 class QuoteCrawler(Crawler):
     config = {
         'LOG_LEVEL': 'INFO',
+        'MAX_REQUESTS': 10,
         'REDIS_ENABLE': True,
         'REDIS_START_KEY': REDIS_START_KEY,
         'REDIS_ITEMS_KEY': 'acrawler.quotes.items',
@@ -40,8 +41,6 @@ class QuoteCrawler(Crawler):
     middleware_config = {
         'acrawler.handlers.ItemToRedis': 100
     }
-
-    max_requests = 10
 
     main_page = r'quotes.toscrape.com/page/\d+'
     author_page = r'quotes.toscrape.com/author/.*'

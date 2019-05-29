@@ -48,10 +48,10 @@ class MovieItem(ParselItem):
 class IMDBCrawler(Crawler):
     config = {
         'LOG_LEVEL': 'INFO',
+        'MAX_REQUESTS': 6,
         'PERSISTENT': True,
         'PERSISTENT_NAME': 'IMDBv0.1'
     }
-    max_requests = 6
 
     async def start_requests(self):
         yield Request('https://www.imdb.com/chart/moviemeter')

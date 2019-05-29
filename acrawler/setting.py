@@ -29,7 +29,13 @@ LOG_LEVEL = 'INFO'
 STATUS_ALLOWED = None
 """A list of intergers representing status codes other than 200."""
 
-MAX_REQUESTS_PER_HOST: int = 0
+MAX_TRIES: int = 3
+"""A task will try to execute for `max_tries` times before a complete fail."""
+
+MAX_REQUESTS: int = 4
+"""A crawler will obtain `MAX_REQUESTS` request concurrently."""
+
+MAX_REQUESTS_PER_HOST: dict = {}
 """Limit simultaneous connections to the same endpoint(host, port, is_ssl)."""
 
 REDIS_ENABLE = False
