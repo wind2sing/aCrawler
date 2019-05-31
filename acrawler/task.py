@@ -40,7 +40,7 @@ class Task:
                  family=None,
                  _middleware=None,
                  recrawl: int = 0,
-                 exetime = 0):
+                 exetime=0):
 
         self.dont_filter = dont_filter
         self.priority = priority
@@ -92,11 +92,11 @@ class Task:
     @property
     def ancestor(self):
         if not self._ancestor:
-            self._ancestor = self.fingerprint
+            self._ancestor = str(self.fingerprint)
         return self._ancestor
-    
+
     @ancestor.setter
-    def ancestor(self, value):
+    def ancestor(self, value: str):
         self._ancestor = value
 
     async def execute(self,
@@ -171,5 +171,3 @@ class SpecialTask(Task):
 
         for handler in self.middleware.handlers:
             await handler.handle(position=2, task=self)
-
-

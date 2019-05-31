@@ -81,7 +81,7 @@ class Worker:
                         'Execution of {} faces error: {}'.format(task, e))
                     logger.error(traceback.format_exc())
                     exception = True
-                
+
                 if self.is_req:
                     self.crawler.counter.release_req(task)
 
@@ -272,8 +272,6 @@ class Crawler(object):
 
         self.middleware.crawler = self
         self._add_default_middleware_handler_cls()
-        logger.info("Initializing middleware's handlers...")
-        logger.info(self.middleware)
 
     def run(self):
         """Core method of the crawler. Usually called to start crawling."""
@@ -289,6 +287,8 @@ class Crawler(object):
     async def arun(self):
         # Wraps main works and wait until all tasks finish.
         try:
+            logger.info("Checking middleware's handlers...")
+            logger.info(self.middleware)
             logger.info("Start crawling...")
             await self._on_start()
             await CrawlerStart(self).execute()
@@ -307,9 +307,11 @@ class Crawler(object):
         try:
             self.loop.create_task(self._log_status_timer())
             for _ in range(self.max_requests):
-                self.workers.append(Worker(self, self.schedulers['Request'], is_req=True))
+                self.workers.append(
+                    Worker(self, self.schedulers['Request'], is_req=True))
             for _ in range(self.max_workers):
-                self.workers.append(Worker(self, self.schedulers['Default'], is_req=False))
+                self.workers.append(
+                    Worker(self, self.schedulers['Default'], is_req=False))
             logger.info('Create %d request workers', self.max_requests)
             logger.info('Create %d workers', self.max_workers)
             self.start_time = time.time()
@@ -340,6 +342,15 @@ class Crawler(object):
         Args:
             response: the response task generated from corresponding request.
         """
+        yield None
+
+    async def web_add_task_query(self, query: dict = None):
+        url = query.pop('url', '')
+        if url:
+            task = Request(url=url, **query)
+            yield task
+        else:
+            raise Exception('Not valid url from web request!')
         yield None
 
     async def add_task(self, new_task: 'acrawler.task.Task', dont_filter=False, ancestor=None) -> bool:
@@ -408,7 +419,8 @@ class Crawler(object):
         self.counter = Counter(crawler=self, loop=self.loop)
         self.redis_enable = self.config.get('REDIS_ENABLE', False)
         self.web_enable = self.config.get('WEB_ENABLE', False)
-        self.lock_always = self.redis_enable or self.web_enable or self.config.get('LOCK_ALWAYS', False)
+        self.lock_always = self.redis_enable or self.web_enable or self.config.get(
+            'LOCK_ALWAYS', False)
         self.persistent = self.config.get('PERSISTENT', False)
 
         request_df = None
@@ -563,20 +575,20 @@ class Crawler(object):
         # disable pickling
         return {}
 
+
 class CrawlerStart(SpecialTask):
     """ A special task that executes when crawler starts.
     It will call :meth:`Crawler.start_requests` to yield tasks.
     """
 
     def __init__(self, crawler):
-        self.crawler:Crawler = crawler
+        self.crawler: Crawler = crawler
         self.loop = self.crawler.loop
         super().__init__()
 
     async def _execute(self):
         await self._produce_tasks_from_start_requests()
         self.loop.create_task(self.crawler.next_requests())
-
 
     async def _produce_tasks_from_start_requests(self):
         logger.info("Produce initial tasks...")
@@ -594,7 +606,7 @@ class CrawlerFinish(SpecialTask):
     """
 
     def __init__(self, crawler):
-        self.crawler:Crawler = crawler
+        self.crawler: Crawler = crawler
         super().__init__()
         self.dummy = asyncio.Event(loop=self.crawler.loop)
         self.dummy.clear()

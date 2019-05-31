@@ -19,22 +19,20 @@ async def runweb(crawler: Crawler = None):
     @routes.get('/add_task')
     async def add_task(request):
         try:
-            kwargs = dict(request.query)
-            url = kwargs.pop('url', '')
-            if url:
-                task = Request(url=url, **kwargs)
-                task.ancestor ='@web'+ str(time.time())
-                await crawler.add_task(task, dont_filter=True)
-                await crawler.counter.join()
-                items = crawler.web_items.pop(task.ancestor, [])
-                if items:
-                    res = {'error': None}
-                    res['items'] = items
-                    return web.json_response(res)
-                else:
-                    raise Exception('Items not found!')
+            query = request.query.copy()
+            ancestor = '@web'+ str(time.time())
+            async for task in crawler.web_add_task_query(query):
+                await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
+            await crawler.counter.join()
+
+            items = crawler.web_items.pop(ancestor, [])
+            if items:
+                res = {'error': None}
+                res['items'] = items
+                return web.json_response(res)
             else:
-                raise Exception('Not valid url from web request!')
+                raise Exception('Items not found!')
+
         except Exception as e:
             logger.error(e)
             res = {'error': str(e)}
