@@ -414,14 +414,25 @@ class Crawler(object):
         logger.debug(
             f'middleware_config:\n {pformat(self.middleware_config)}')
 
-    def _create_schedulers(self):
-        # we maintain two schedulers, request task / non-request task.
-        self.counter = Counter(crawler=self, loop=self.loop)
-        self.redis_enable = self.config.get('REDIS_ENABLE', False)
-        self.web_enable = self.config.get('WEB_ENABLE', False)
-        self.lock_always = self.redis_enable or self.web_enable or self.config.get(
+    @property
+    def redis_enable(self):
+        return self.config.get('REDIS_ENABLE', False)
+
+    @property
+    def web_enable(self):
+        return self.config.get('WEB_ENABLE', False)
+
+    @property
+    def lock_always(self):
+        return self.redis_enable or self.web_enable or self.config.get(
             'LOCK_ALWAYS', False)
-        self.persistent = self.config.get('PERSISTENT', False)
+        
+    @property
+    def persistent(self):
+        return self.config.get('PERSISTENT', False)
+
+    def _create_schedulers(self):
+        self.counter = Counter(crawler=self, loop=self.loop)
 
         request_df = None
         request_q = None

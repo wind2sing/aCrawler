@@ -206,11 +206,13 @@ class ItemCollector(Handler):
     family = 'Item'
 
     async def on_start(self):
-        if self.crawler.web_enable:
+        self.do_web = self.crawler.web_enable
+        if self.do_web:
             self.crawler.web_items = {}
+        
 
     async def handle_after(self, task):
-        if self.crawler.web_enable and task.ancestor.startswith('@web'):
+        if self.do_web and task.ancestor.startswith('@web'):
             li = self.crawler.web_items.setdefault(task.ancestor, [])
             li.append(task.content)
 
@@ -222,18 +224,23 @@ class CrawlerStartAddon(Handler):
 
     async def on_start(self):
         self.redis = None
-        if self.crawler.redis_enable:
+        self.do_redis = self.crawler.redis_enable
+        self.do_web = self.crawler.web_enable
+
+        if self.do_redis:
             aioredis = check_import('aioredis')
             self.error = aioredis.errors.ConnectionForcedCloseError
             self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
         self.crawler.redis = self.redis
 
-        if self.crawler.web_enable:
+        if self.do_web:
             web = check_import('acrawler.web')
             self.web_runner = await web.runweb(self.crawler)
 
+
+
     async def handle_after(self, task):
-        if self.crawler.redis_enable:
+        if self.do_redis:
             self.redis_start_key = self.crawler.config.get('REDIS_START_KEY')
             self.crawler.loop.create_task(self._next_requests_from_redis_start())
 
@@ -245,7 +252,7 @@ class CrawlerStartAddon(Handler):
             await self.crawler.add_task(task)
 
     async def on_close(self):
-        if self.crawler.web_enable:
+        if self.do_web:
             await self.web_runner.cleanup()
 
 
