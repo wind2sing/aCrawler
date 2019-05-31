@@ -129,7 +129,6 @@ class Counter:
         self._unfinished_tasks = 0
         self._finished = asyncio.Event(loop=loop)
         self._finished.set()
-        self.always_lock = False
 
         self.conf = self.crawler.config.get(
             'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
@@ -140,16 +139,9 @@ class Counter:
         self.uniconf = {}
         self.unicheck = self.uni > 0
 
-    def lock_always(self):
-        self._finished.clear()
-        self.always_lock = True
-
     async def join(self):
-        if self.always_lock:
+        if self._unfinished_tasks > 0:
             await self._finished.wait()
-        else:
-            if self._unfinished_tasks > 0:
-                await self._finished.wait()
 
     def task_add(self):
         self._unfinished_tasks += 1
@@ -160,14 +152,12 @@ class Counter:
             if success != -1:
                 rc = self.counts.setdefault(family, [0, 0])
                 rc[success] += 1
-        if self.always_lock:
-            self._unfinished_tasks -= 1
-        else:
-            if self._unfinished_tasks <= 0:
-                raise ValueError('task_done() called too many times')
-            self._unfinished_tasks -= 1
-            if self._unfinished_tasks == 0:
-                self._finished.set()
+
+        if self._unfinished_tasks <= 0:
+            raise ValueError('task_done() called too many times')
+        self._unfinished_tasks -= 1
+        if self._unfinished_tasks == 0:
+            self._finished.set()
 
     def require_req(self, req):
         if self.unicheck:
@@ -301,10 +291,10 @@ class Crawler(object):
         try:
             logger.info("Start crawling...")
             await self._on_start()
-            await self._start()
+            await CrawlerStart(self).execute()
             await self.manager()
 
-            await self._finish()
+            await CrawlerFinish(self).execute()
             await self.ashutdown()
         except asyncio.CancelledError:
             pass
@@ -372,7 +362,9 @@ class Crawler(object):
             added = await self.sdl.produce(item, dont_filter=dont_filter)
         if added:
             self.counter.task_add()
-        return added
+            return new_task
+        else:
+            return False
 
     def _form_config(self):
         # merge configs from three levels of sources
@@ -411,6 +403,8 @@ class Crawler(object):
         # we maintain two schedulers, request task / non-request task.
         self.counter = Counter(crawler=self, loop=self.loop)
         self.redis_enable = self.config.get('REDIS_ENABLE', False)
+        self.web_enable = self.config.get('WEB_ENABLE', False)
+        self.lock_always = self.redis_enable or self.web_enable or self.config.get('LOCK_ALWAYS', False)
         self.persistent = self.config.get('PERSISTENT', False)
 
         request_df = None
@@ -446,43 +440,9 @@ class Crawler(object):
                 mcls.priority = key
                 self.middleware.append_handler_cls(mcls)
 
-    async def _start(self):
-        self.redis = None
-        if self.redis_enable:
-            aioredis = check_import('aioredis')
-            self.redis = await aioredis.create_redis(address=self.config.get('REDIS_ADDRESS'))
-            self.counter.lock_always()
-
-        await self._produce_tasks_from_start_requests()
-
-        self.loop.create_task(self.next_requests())
-        if self.redis_enable:
-            self.redis_start_key = self.config.get('REDIS_START_KEY')
-            self.loop.create_task(self._next_requests_from_redis_start())
-
-    async def _next_requests_from_redis_start(self):
-        while True:
-            _, url = await self.redis.blpop(self.config.get('REDIS_START_KEY'))
-            task = Request(str(url, encoding="utf-8"))
-            await self.add_task(task)
-
     async def next_requests(self):
         """This method will be binded to the event loop as a task. You can add task manually in this method."""
         pass
-
-    async def _finish(self):
-        await self.counter.join()
-
-    async def _produce_tasks_from_start_requests(self):
-        logger.info("Produce initial tasks...")
-        async for task in to_asyncgen(self.start_requests):
-            if isinstance(task, Request):
-                task.add_callback(self.parse)
-                if await self.sdl_req.produce(task):
-                    self.counter.task_add()
-            elif isinstance(task, Task):
-                if await self.sdl.produce(task):
-                    self.counter.task_add()
 
     async def _on_start(self):
         # call handlers's on_start()
@@ -599,3 +559,47 @@ class Crawler(object):
         # disable pickling
         return {}
 
+class CrawlerStart(SpecialTask):
+    """ A special task that executes when crawler starts.
+    It will call :meth:`Crawler.start_requests` to yield tasks.
+    """
+
+    def __init__(self, crawler):
+        self.crawler:Crawler = crawler
+        self.loop = self.crawler.loop
+        super().__init__()
+
+    async def _execute(self):
+        await self._produce_tasks_from_start_requests()
+        self.loop.create_task(self.crawler.next_requests())
+
+
+    async def _produce_tasks_from_start_requests(self):
+        logger.info("Produce initial tasks...")
+        async for task in to_asyncgen(self.crawler.start_requests):
+            if isinstance(task, Request):
+                task.add_callback(self.crawler.parse)
+                await self.crawler.add_task(task)
+            elif isinstance(task, Task):
+                await self.crawler.add_task(task)
+
+
+class CrawlerFinish(SpecialTask):
+    """A special task that executes after creating all workers.
+    It will block the crawler from shutdown until all tasks finish.
+    """
+
+    def __init__(self, crawler):
+        self.crawler:Crawler = crawler
+        super().__init__()
+        self.dummy = asyncio.Event(loop=self.crawler.loop)
+        self.dummy.clear()
+
+    async def _execute(self):
+        await self._wait_finished()
+
+    async def _wait_finished(self):
+        if self.crawler.lock_always:
+            await self.dummy.wait()
+        else:
+            await self.crawler.counter.join()
