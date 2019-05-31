@@ -97,7 +97,7 @@ class Request(Task):
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
-    
+
     @property
     def url_str(self):
         return self.url.human_repr()

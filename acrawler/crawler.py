@@ -62,7 +62,7 @@ class Worker:
                     if self.is_req:
                         self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
-                        await self.crawler.add_task(new_task)
+                        await self.crawler.add_task(new_task, ancestor=task.ancestor)
                 except SkipTaskError as e:
                     logger.debug('Skip task {}'.format(task))
                 except ReScheduleError as e:
@@ -342,7 +342,7 @@ class Crawler(object):
         """
         yield None
 
-    async def add_task(self, new_task: 'acrawler.task.Task', dont_filter=False) -> bool:
+    async def add_task(self, new_task: 'acrawler.task.Task', dont_filter=False, ancestor=None) -> bool:
         """ Interface to add new Task to schedulers.
 
         Args:
@@ -353,12 +353,16 @@ class Crawler(object):
         """
         added = False
         if isinstance(new_task, Task):
+            if ancestor:
+                new_task.ancestor = ancestor
             if isinstance(new_task, Request):
                 added = await self.sdl_req.produce(new_task, dont_filter=dont_filter)
             else:
                 added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         elif isinstance(new_task, dict):
             item = DefaultItem(extra=new_task)
+            if ancestor:
+                item.ancestor = ancestor
             added = await self.sdl.produce(item, dont_filter=dont_filter)
         if added:
             self.counter.task_add()

@@ -17,6 +17,7 @@ MIDDLEWARE_CONFIG = {
     'acrawler.handlers.ResponseAddCallback': 900,
     'acrawler.handlers.ResponseCheckStatus': 800,
     'acrawler.handlers.CrawlerStartAddon': 1000,
+    'acrawler.handlers.ItemCollector': 700,
 }
 
 
@@ -55,6 +56,15 @@ REDIS_DF_KEY = 'acrawler:df'
 
 REDIS_ADDRESS = 'redis://localhost'
 """"""
+
+WEB_ENABLE = False
+"""Set to True if you want web service support."""
+
+WEB_HOST = 'localhost'
+"""Host for the web service."""
+
+WEB_PORT = 8079
+"""Port for the web service."""
 
 PERSISTENT = False
 """Set to True if you want stop-resume support. If you enable distributed support, this conf will be ignored."""

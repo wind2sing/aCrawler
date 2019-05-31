@@ -51,6 +51,7 @@ class Task:
         if family:
             self.families.add(family)
         self.primary_family = family or self.__class__.__name__
+        self._ancestor = None
 
         self.middleware = _middleware or middleware
         self.crawler = self.middleware.crawler
@@ -88,6 +89,16 @@ class Task:
         """returns value of :meth:`_fingerprint`."""
         return self._fingerprint()
 
+    @property
+    def ancestor(self):
+        if not self._ancestor:
+            self._ancestor = self.fingerprint
+        return self._ancestor
+    
+    @ancestor.setter
+    def ancestor(self, value):
+        self._ancestor = value
+
     async def execute(self,
                       **kwargs: Any) -> _TaskGenerator:
         """main entry for a task to start working.
@@ -115,6 +126,9 @@ class Task:
     def _fingerprint(self):
         """should be rewritten as a fingerprint calculator in the subclass."""
         return self.__hash__()
+
+    def __lt__(self, other):
+        return self.score < other.score
 
     def __getstate__(self):
         state = self.__dict__

@@ -82,7 +82,7 @@ class RequestMergeConfig(Handler):
 class RequestDelay(Handler):
     family = 'Request'
 
-    async def handle_after(self, request: _Request):
+    async def handle_before(self, request: _Request):
         await asyncio.sleep(self.crawler.config.get('DOWNLOAD_DELAY'))
 
 
@@ -160,8 +160,7 @@ class ItemToRedis(Handler):
         logger.info(f'Connecting to Redis... {self.redis}')
 
     async def handle_after(self, item):
-        await self.redis.lpush(self.redis_key, json.dumps(
-            item.content, skipkeys='_item_type'))
+        await self.redis.lpush(self.redis_key, json.dumps(item.content))
 
     async def on_close(self):
         self.redis.close()
@@ -203,27 +202,50 @@ class ItemToMongo(Handler):
         self.client.close()
 
 
+class ItemCollector(Handler):
+    family = 'Item'
+
+    async def on_start(self):
+        if self.crawler.web_enable:
+            self.crawler.web_items = {}
+
+    async def handle_after(self, task):
+        if self.crawler.web_enable and task.ancestor.startswith('@web'):
+            li = self.crawler.web_items.setdefault(task.ancestor, [])
+            li.append(task.content)
+
+
 # Others
 
 class CrawlerStartAddon(Handler):
     family = 'CrawlerStart'
 
     async def on_start(self):
+        self.redis = None
         if self.crawler.redis_enable:
             aioredis = check_import('aioredis')
+            self.error = aioredis.errors.ConnectionForcedCloseError
             self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
-            self.crawler.counter.lock_always()
-        else:
-            self.redis = None
+        self.crawler.redis = self.redis
+
+        if self.crawler.web_enable:
+            web = check_import('acrawler.web')
+            self.web_runner = await web.runweb(self.crawler)
 
     async def handle_after(self, task):
         if self.crawler.redis_enable:
-            self.crawler.loop.create_task(
-                self._next_request_from_redis_start())
+            self.redis_start_key = self.crawler.config.get('REDIS_START_KEY')
+            self.crawler.loop.create_task(self._next_requests_from_redis_start())
 
-    async def _next_request_from_redis_start(self):
+    async def _next_requests_from_redis_start(self):
+        start_key = self.crawler.config.get('REDIS_START_KEY')
         while True:
-            _, url = await self.redis.blpop(self.crawler.config.get('REDIS_START_KEY'))
+            _, url = await self.redis.blpop(start_key)
             task = Request(str(url, encoding="utf-8"))
-            if await self.crawler.schedulers['Request'].produce(task):
-                self.crawler.counter.task_add()
+            await self.crawler.add_task(task)
+
+    async def on_close(self):
+        if self.crawler.web_enable:
+            await self.web_runner.cleanup()
+
+
