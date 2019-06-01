@@ -1,5 +1,4 @@
 from acrawler import Parser, Crawler, Processors, ParselItem, get_logger
-from acrawler.setting import REDIS_START_KEY
 from acrawler.utils import redis_push_start_urls
 
 
@@ -34,8 +33,8 @@ class QuoteCrawler(Crawler):
         'LOG_LEVEL': 'INFO',
         'MAX_REQUESTS': 10,
         'REDIS_ENABLE': True,
-        'REDIS_START_KEY': REDIS_START_KEY,
-        'REDIS_ITEMS_KEY': 'acrawler.quotes.items',
+        'REDIS_START_KEY': 'acrawler.QuoteCrawler.starturls',
+        'REDIS_ITEMS_KEY': 'acrawler.QuoteCrawler.items',
     }
 
     middleware_config = {
@@ -54,13 +53,13 @@ class QuoteCrawler(Crawler):
 
 
 if __name__ == '__main__':
-    print('Adding start urls to Redis, key: {}'.format(REDIS_START_KEY))
+    print('Adding start urls to Redis, key: acrawler.quotes.starturls')
     start_urls = ['http://quotes.toscrape.com/page/1/',
                     'http://quotes.toscrape.com/page/5/',
                     'http://quotes.toscrape.com/page/10/',
                     'http://quotes.toscrape.com/page/15/',
                   ]
-    redis_push_start_urls(REDIS_START_KEY, start_urls)
+    redis_push_start_urls('acrawler.QuoteCrawler.starturls', start_urls)
 
     QuoteCrawler().run()
     # Crawler always listen to redis and won't finish.

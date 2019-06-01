@@ -145,14 +145,14 @@ class ItemToRedis(Handler):
     """Maximum number of connection to keep in pool.
     """
 
-    default_key = 'acrawler:items'
+    items_key = 'acrawler:items'
     """Key of the list at which item's content is inserted.
     """
 
     async def on_start(self):
         aioredis = check_import('aioredis')
-        self.redis_key = self.crawler.config.get(
-            'REDIS_ITEMS_KEY', self.default_key)
+        self.items_key = self.crawler.config.get(
+            'REDIS_ITEMS_KEY', self.items_key)
         self.redis = await aioredis.create_redis_pool(
             self.address,
             maxsize=self.maxsize,
@@ -160,7 +160,7 @@ class ItemToRedis(Handler):
         logger.info(f'Connecting to Redis... {self.redis}')
 
     async def handle_after(self, item):
-        await self.redis.lpush(self.redis_key, json.dumps(item.content))
+        await self.redis.lpush(self.items_key, json.dumps(item.content))
 
     async def on_close(self):
         self.redis.close()
@@ -209,7 +209,6 @@ class ItemCollector(Handler):
         self.do_web = self.crawler.web_enable
         if self.do_web:
             self.crawler.web_items = {}
-        
 
     async def handle_after(self, task):
         if self.do_web and task.ancestor.startswith('@web'):
@@ -237,22 +236,21 @@ class CrawlerStartAddon(Handler):
             web = check_import('acrawler.web')
             self.web_runner = await web.runweb(self.crawler)
 
-
-
     async def handle_after(self, task):
         if self.do_redis:
             self.redis_start_key = self.crawler.config.get('REDIS_START_KEY')
-            self.crawler.loop.create_task(self._next_requests_from_redis_start())
+            self.crawler.loop.create_task(
+                self._next_requests_from_redis_start())
 
     async def _next_requests_from_redis_start(self):
         start_key = self.crawler.config.get('REDIS_START_KEY')
-        while True:
-            _, url = await self.redis.blpop(start_key)
-            task = Request(str(url, encoding="utf-8"))
-            await self.crawler.add_task(task)
+        if start_key:
+            while True:
+                _, url = await self.redis.blpop(start_key)
+                task = Request(str(url, encoding="utf-8"),
+                            callback=self.crawler.parse)
+                await self.crawler.add_task(task)
 
     async def on_close(self):
         if self.do_web:
             await self.web_runner.cleanup()
-
-

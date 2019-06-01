@@ -78,8 +78,9 @@ class Worker:
                     raise e
                 except Exception as e:
                     logger.error(
-                        'Execution of {} faces error: {}'.format(task, e))
-                    logger.error(traceback.format_exc())
+                        'Execution of {} occurs {}:'.format(task, e.__class__))
+                    logger.error(e)
+                    # logger.error(traceback.format_exc())
                     exception = True
 
                 if self.is_req:
@@ -426,7 +427,7 @@ class Crawler(object):
     def lock_always(self):
         return self.redis_enable or self.web_enable or self.config.get(
             'LOCK_ALWAYS', False)
-        
+
     @property
     def persistent(self):
         return self.config.get('PERSISTENT', False)
@@ -439,11 +440,13 @@ class Crawler(object):
         if self.redis_enable:
             request_df = RedisDupefilter(
                 address=self.config.get('REDIS_ADDRESS'),
-                df_key=self.config.get('REDIS_DF_KEY')
+                df_key=self.config.get(
+                    'REDIS_DF_KEY') or 'acrawler:'+self.__class__.__name__+':df'
             )
             request_q = RedisPQ(
                 address=self.config.get('REDIS_ADDRESS'),
-                q_key=self.config.get('REDIS_QUEUE_KEY')
+                q_key=self.config.get(
+                    'REDIS_QUEUE_KEY') or 'acrawler:'+self.__class__.__name__+':q'
             )
 
         self.schedulers = {

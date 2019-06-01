@@ -43,28 +43,36 @@ MAX_REQUESTS_SPECIAL_HOST: dict = {}
 """Limit simultaneous connections with a host-limit dictionary."""
 
 REDIS_ENABLE = False
-"""Set to True if you want distributed crawling support."""
+"""Set to True if you want distributed crawling support.
+If it is True, the crawler will obtain `crawler.redis` and lock itself always.
+"""
 
-REDIS_START_KEY = 'acrawler:start_urls'
+REDIS_START_KEY = None
+"""And the crawler will try to get url from redis list `REDIS_START_KEY` if 
+it is not None and send Request(also bind `crawler.parse` as 
+its callback function)"""
+
+REDIS_QUEUE_KEY = None
 """"""
 
-REDIS_QUEUE_KEY = 'acrawler:queue'
-""""""
-
-REDIS_DF_KEY = 'acrawler:df'
+REDIS_DF_KEY = None
 """"""
 
 REDIS_ADDRESS = 'redis://localhost'
 """"""
 
 WEB_ENABLE = False
-"""Set to True if you want web service support."""
+"""Set to True if you want web service support.
+If it is True, the crawler will lock itself always."""
 
 WEB_HOST = 'localhost'
 """Host for the web service."""
 
 WEB_PORT = 8079
 """Port for the web service."""
+
+LOCK_ALWAYS = False
+"""Set to True if you don't want the crawler exits after finishing tasks."""
 
 PERSISTENT = False
 """Set to True if you want stop-resume support. If you enable distributed support, this conf will be ignored."""
