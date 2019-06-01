@@ -163,8 +163,6 @@ class Request(Task):
 
     def __getstate__(self):
         state = super().__getstate__()
-        state.pop('session', None)
-        state.pop('response', None)
         return state
 
 

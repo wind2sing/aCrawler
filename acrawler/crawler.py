@@ -1,5 +1,4 @@
-import acrawler
-from typing import List, Dict
+
 import asyncio
 import logging
 import time
@@ -8,17 +7,17 @@ import signal
 import pickle
 from pathlib import Path
 
-
 from acrawler.task import Task, SpecialTask
 from acrawler.http import Request
 from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
 from acrawler.middleware import middleware
-from acrawler.utils import merge_config, config_from_setting, to_asyncgen, check_import
+from acrawler.utils import merge_config, config_from_setting, to_asyncgen
 from acrawler.item import DefaultItem
 from acrawler.exceptions import SkipTaskError, ReScheduleError
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from pprint import pformat
+from typing import List
 
 try:
     import uvloop
@@ -27,11 +26,11 @@ except ImportError:
     pass
 
 # typing
-from typing import Tuple, Dict, Any, Type, TYPE_CHECKING
+from typing import Dict, Any
 import acrawler
+
 _Config = Dict[str, Any]
 _Response = acrawler.http.Response
-
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +62,7 @@ class Worker:
                         self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
                         await self.crawler.add_task(new_task, ancestor=task.ancestor)
-                except SkipTaskError as e:
+                except SkipTaskError:
                     logger.debug('Skip task {}'.format(task))
                 except ReScheduleError as e:
                     task.exetime = time.time() + e.defer
@@ -277,7 +276,7 @@ class Crawler(object):
     def run(self):
         """Core method of the crawler. Usually called to start crawling."""
 
-        signals = (signal.SIGINT, )
+        signals = (signal.SIGINT,)
         for s in signals:
             self.loop.add_signal_handler(
                 s, lambda s=s: self.loop.create_task(self.ashutdown(s)))
@@ -441,12 +440,12 @@ class Crawler(object):
             request_df = RedisDupefilter(
                 address=self.config.get('REDIS_ADDRESS'),
                 df_key=self.config.get(
-                    'REDIS_DF_KEY') or 'acrawler:'+self.__class__.__name__+':df'
+                    'REDIS_DF_KEY') or 'acrawler:' + self.__class__.__name__ + ':df'
             )
             request_q = RedisPQ(
                 address=self.config.get('REDIS_ADDRESS'),
                 q_key=self.config.get(
-                    'REDIS_QUEUE_KEY') or 'acrawler:'+self.__class__.__name__+':q'
+                    'REDIS_QUEUE_KEY') or 'acrawler:' + self.__class__.__name__ + ':q'
             )
 
         self.schedulers = {
@@ -549,13 +548,13 @@ class Crawler(object):
         if self.persistent and not self.redis_enable:
             tasks = []
             with open(self.fi_tasks, 'wb') as f:
-                while(1):
+                while 1:
                     try:
                         t = self.sdl_req.q.pq.get_nowait()[1]
                         tasks.append(t)
                     except asyncio.QueueEmpty:
                         break
-                while(1):
+                while 1:
                     try:
                         t = self.sdl_req.q.waiting.get_nowait()[1]
                         tasks.append(t)
@@ -586,8 +585,10 @@ class Crawler(object):
         logger.info('Request Scheduler tasks left:{}'.format(await self.sdl_req.q.get_length()))
 
     def __getstate__(self):
-        # disable pickling
         return {}
+
+    def __setstate__(self, state):
+        self.__dict__.update(middleware.crawler.__dict__)
 
 
 class CrawlerStart(SpecialTask):
