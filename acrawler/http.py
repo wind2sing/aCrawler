@@ -4,6 +4,8 @@ import asyncio
 import aiohttp
 import aiofiles
 import hashlib
+import json
+from json.decoder import JSONDecodeError
 from urllib.parse import urljoin
 from pathlib import Path
 import traceback
@@ -215,6 +217,7 @@ class Response(Task):
         self.bind_cbs = False
 
         self._text = None
+        self._json = None
         self._sel: Selector = None
 
     @classmethod
@@ -244,6 +247,16 @@ class Response(Task):
                 logger.debug('({}) {}'.format(self.url_str, e))
                 self._text = self.body.decode(self.encoding, 'ignore')
         return self._text
+    
+    @property
+    def json(self):
+        if self._json is None:
+            try:
+                self._json = json.loads(self.body)
+            except JSONDecodeError as e:
+                logger.error('JSONDecodeError for {}: {}'.format(self, e))
+        return self._json
+
 
     @property
     def sel(self):
