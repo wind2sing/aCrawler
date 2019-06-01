@@ -175,7 +175,7 @@ class AsyncPQ(BaseQueue):
         return r
 
     async def get_length(self):
-        return self.pq.qsize()+self.waiting.qsize()
+        return self.pq.qsize() + self.waiting.qsize()
 
     async def clear(self):
         self.pq = asyncio.PriorityQueue()
@@ -197,6 +197,11 @@ class RedisPQ(BaseQueue):
     async def push(self, task: _Task):
         return await self.redis.zadd(self.waiting_key,
                                      task.exetime,
+                                     self.serialize(task))
+
+    async def push_to_pq(self, task: _Task):
+        return await self.redis.zadd(self.pq_key,
+                                     -task.score,
                                      self.serialize(task))
 
     async def pop(self):
@@ -224,9 +229,7 @@ class RedisPQ(BaseQueue):
             if eles:
                 task = self.deserialize(eles[0])
                 if task.exetime <= now:
-                    await self.redis.zadd(self.pq_key,
-                                          -task.score,
-                                          self.serialize(task))
+                    await self.push_to_pq(task)
                 else:
                     await self.push(task)
                     break

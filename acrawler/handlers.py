@@ -228,8 +228,7 @@ class CrawlerStartAddon(Handler):
 
         if self.do_redis:
             aioredis = check_import('aioredis')
-            self.error = aioredis.errors.ConnectionForcedCloseError
-            self.redis = await aioredis.create_redis(address=self.crawler.config.get('REDIS_ADDRESS'))
+            self.redis = await aioredis.create_redis_pool(address=self.crawler.config.get('REDIS_ADDRESS'))
         self.crawler.redis = self.redis
 
         if self.do_web:
@@ -248,7 +247,7 @@ class CrawlerStartAddon(Handler):
             while True:
                 _, url = await self.redis.blpop(start_key)
                 task = Request(str(url, encoding="utf-8"),
-                            callback=self.crawler.parse)
+                               callback=self.crawler.parse)
                 await self.crawler.add_task(task)
 
     async def on_close(self):
