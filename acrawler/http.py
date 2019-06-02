@@ -68,10 +68,11 @@ class Request(Task):
                  method: str = 'GET',
                  request_config: dict = None,
                  status_allowed: list = None,
-                 encoding = None,
+                 encoding=None,
 
                  # Below are paras for parent class
                  dont_filter: bool = False,
+                 ignore_exception: bool = False,
                  meta: dict = None,
                  priority: int = 0,
                  family=None,
@@ -80,6 +81,7 @@ class Request(Task):
                  **kwargs
                  ):
         super().__init__(dont_filter=dont_filter,
+                         ignore_exception=ignore_exception,
                          priority=priority,
                          meta=meta,
                          family=family,
@@ -99,6 +101,7 @@ class Request(Task):
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
+        self.exception = None
 
     @property
     def url_str(self):
@@ -153,6 +156,7 @@ class Request(Task):
                 logger.info(rt)
                 return rt
         except Exception as e:
+            self.exception = e
             raise e
         finally:
             if to_close:
@@ -163,7 +167,14 @@ class Request(Task):
 
     def __getstate__(self):
         state = super().__getstate__()
+        state.pop('session', None)
+        state.pop('response', None)
         return state
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.__dict__['response'] = None
+        self.__dict__['session'] = None
 
 
 class Response(Task):
@@ -245,7 +256,7 @@ class Response(Task):
                 logger.debug('({}) {}'.format(self.url_str, e))
                 self._text = self.body.decode(self.encoding, 'ignore')
         return self._text
-    
+
     @property
     def json(self):
         if self._json is None:
@@ -254,7 +265,6 @@ class Response(Task):
             except JSONDecodeError as e:
                 logger.error('JSONDecodeError for {}: {}'.format(self, e))
         return self._json
-
 
     @property
     def sel(self):
@@ -283,7 +293,7 @@ class Response(Task):
         """
         url = None
         if isinstance(a, list):
-            if len(a)>0:
+            if len(a) > 0:
                 a = a[0]
         if isinstance(a, str):
             url = a
@@ -336,7 +346,6 @@ class FileRequest(Request):
     file_name_key = '_fname'
     """It will try to call `self.meta.get(file_name_key)` to get the file name to save.
     """
-
 
     def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
         if not callback:

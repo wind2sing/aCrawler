@@ -41,10 +41,15 @@ class RequestPrepareSession(Handler):
 
 
 class ResponseCheckStatus(Handler):
+    """a handler check response's status and will retry the request if it failed.
+
+    If the response is not allowed by crawler and by request's parameters, it will be considered as failing and then retried.
+    By default, any response with status rather than 200 will fail.
+    """
     family = 'Response'
 
     def on_start(self):
-        self.status_allowed = self.crawler.config.get('STATUS_ALLOWED')
+        self.status_allowed = self.crawler.config.get('STATUS_ALLOWED', None)
         self.allow_all = (self.status_allowed == [])
         self.deny_all = self.status_allowed is None
 
@@ -54,8 +59,6 @@ class ResponseCheckStatus(Handler):
         if response.status != 200:
             if self.deny_all or not response.status in self.status_allowed:
                 if not response.ok:
-                    logger.error(
-                        'Response failed {}, might retry'.format(response))
                     task = response.request
                     if task.tries < self.crawler.max_tries:
                         task.dont_filter = True

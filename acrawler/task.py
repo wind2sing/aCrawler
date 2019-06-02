@@ -23,6 +23,8 @@ class Task:
 
     :param dont_filter: if True, every instance of the Task will be considered
         as new task. Otherwise fingerprint will be checked to prevent duplication.
+    :param ignore_exception: if True, any exception catched from the task's 
+        execution will not retry the task.
     :param fingerprint_func: A function that receives Task as parameter.
     :param priority: Tasks are scheduled in priority order (higher first). 
         If priorities are same, the one initialized earlier executes first.(FIFO)
@@ -35,6 +37,7 @@ class Task:
 
     def __init__(self,
                  dont_filter: bool = False,
+                 ignore_exception: bool = False,
                  priority: int = 0,
                  meta: dict = None,
                  family=None,
@@ -43,6 +46,7 @@ class Task:
                  exetime=0):
 
         self.dont_filter = dont_filter
+        self.ignore_exception = ignore_exception
         self.priority = priority
         self.meta = meta or {}
 
@@ -62,8 +66,6 @@ class Task:
         self.tries = 0
 
         self.recrawl = recrawl
-        if recrawl > 0:
-            self.dont_filter = True
 
         #: The timestamp of task's initializing time.
         self.init_time = time.time()

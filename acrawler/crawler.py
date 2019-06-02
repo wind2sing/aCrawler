@@ -77,9 +77,8 @@ class Worker:
                     raise e
                 except Exception as e:
                     logger.error(
-                        'Execution of {} occurs {}:'.format(task, e.__class__))
-                    logger.error(e)
-                    # logger.error(traceback.format_exc())
+                        'Execution of {} occurs {}:{}'.format(task, e.__class__, e))
+                    logger.error(traceback.format_exc())
                     exception = True
 
                 if self.is_req:
@@ -87,16 +86,15 @@ class Worker:
 
                 retry = False
                 if exception:
-                    logger.warning(
-                        'Task failed %s for %d times.', task, task.tries)
-                    if task.tries < self._max_tries:
-                        task.dont_filter = True
-                        await self.sdl.produce(task)
-                        retry = True
-                        self.crawler.counter.task_add()
-                    else:
+                    if not task.ignore_exception and task.tries < self._max_tries:
                         logger.warning(
-                            'Drop the task %s', task)
+                            '%s failed for %d times. Retry...',
+                            task, task.tries)
+                        await self.crawler.add_task(task, dont_filter=True)
+                        retry = True
+                    else:
+                        logger.error(
+                            '%s failed for %d times. Drop the task!', task, task.tries)
                     self.crawler.counter.task_done(task, 0)
                 else:
                     self.crawler.counter.task_done(task, 1)
