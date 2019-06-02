@@ -62,11 +62,13 @@ class ResponseCheckStatus(Handler):
                 if not response.ok:
                     task = response.request
                     if task.tries < self.crawler.max_tries:
-                        task.dont_filter = True
-                        await self.crawler.add_task(response.request)
-                    else:
+                        await self.crawler.add_task(response.request, dont_filter=True)
                         logger.warning(
-                            'Drop the task %s', task)
+                            'Retry the task {}'.format(response.request))
+                    else:
+                        pass
+                        # logger.warning(
+                        # 'Drop the task {}'.format(response.request))
 
 
 class RequestMergeConfig(Handler):

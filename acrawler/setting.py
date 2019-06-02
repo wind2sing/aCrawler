@@ -27,6 +27,9 @@ DOWNLOAD_DELAY = 0
 LOG_LEVEL = 'INFO'
 """Default log level."""
 
+LOG_TO_FILE: str = None
+"""redirect log to a filepath"""
+
 STATUS_ALLOWED = None
 """A list of intergers representing status codes other than 200."""
 

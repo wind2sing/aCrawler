@@ -65,6 +65,10 @@ class Worker:
                         self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
                         await self.crawler.add_task(new_task, ancestor=task.ancestor)
+                except asyncio.CancelledError as e:
+                    if self.is_req:
+                        self.crawler.counter.release_req(task)
+                    raise e
                 except SkipTaskError:
                     logger.debug('Skip task {}'.format(task))
                 except ReScheduleError as e:
@@ -74,10 +78,8 @@ class Worker:
                     self.crawler.counter.task_done(task, -1)
                     await self.crawler.add_task(task, dont_filter=True)
                     self.current_task = None
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0.5)
                     continue
-                except asyncio.CancelledError as e:
-                    raise e
                 except Exception as e:
                     logger.error(
                         '{} -> {}:{}'.format(task, e.__class__, e))
@@ -253,18 +255,23 @@ class Crawler(object):
     """
 
     def __init__(self):
+        """Initialization will:
+        - load setting and configs
+        - create schedulers/counter (may load from file)
+        - spawn handlers with middleware_config
+
+        """
 
         self.loop = asyncio.get_event_loop()
 
         self._form_config()
-        self._logging_config()
 
         self.counter: Counter = None
         self.redis: 'aioredis.Redis' = None
-        self.shedulers: Dict[str, 'Scheduler'] = {}
-        self._create_schedulers()
         self.workers: List['Worker'] = []
         self.taskers = {'Request': [], 'Default': []}
+        self.shedulers: Dict[str, 'Scheduler'] = {}
+        self._create_schedulers()
 
         self.middleware = middleware
         """Singleton object :class:`acrawler.middleware.middleware`"""
@@ -275,7 +282,7 @@ class Crawler(object):
     def run(self):
         """Core method of the crawler. Usually called to start crawling."""
 
-        signals = (signal.SIGINT,)
+        signals = (signal.SIGTERM, signal.SIGINT)
         for s in signals:
             self.loop.add_signal_handler(
                 s, lambda s=s: self.loop.create_task(self.ashutdown(s)))
@@ -286,6 +293,7 @@ class Crawler(object):
     async def arun(self):
         # Wraps main works and wait until all tasks finish.
         try:
+            self.config_logger()
             logger.info("Checking middleware's handlers...")
             logger.info(self.middleware)
             logger.info("Start crawling...")
@@ -303,6 +311,12 @@ class Crawler(object):
     async def manager(self):
         """Create multiple workers to execute tasks.
         """
+        logger.info('Normal  Scheduler tasks init -> queue:{} waiting:{}'.format(
+            await self.sdl.q.get_length_of_pq(),
+            await self.sdl.q.get_length_of_waiting()))
+        logger.info('Request Scheduler tasks init -> queue:{} waiting:{}'.format(
+            await self.sdl_req.q.get_length_of_pq(),
+            await self.sdl_req.q.get_length_of_waiting()))
         self.max_requests = self.config.get('MAX_REQUESTS', 4)
         self.max_workers = self.config.get('MAX_WORKERS', self.max_requests)
         self.max_tries = self.config.get('MAX_TRIES', 3)
@@ -406,10 +420,24 @@ class Crawler(object):
             d_m_config, u_m_config, self.middleware_config
         )
 
-    def _logging_config(self):
+    def config_logger(self):
         # log three types of config
-        level = self.config.get('LOG_LEVEL')
-        logging.getLogger('acrawler').setLevel(level)
+        level = self.config.get('LOG_LEVEL', 'INFO')
+        to_file = self.config.get('LOG_TO_FILE', None)
+
+        LOGGER = logging.getLogger('acrawler')
+
+        if to_file:
+            handler = logging.FileHandler(to_file)
+        else:
+            handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            "%(asctime)s %(name)-20s %(levelname)-8s %(message)s")
+        handler.setFormatter(formatter)
+
+        LOGGER.addHandler(handler)
+        LOGGER.setLevel(level)
+
         logger.debug("Merging configs...")
         logger.debug(
             f'config: \n{pformat(self.config)}')
@@ -506,7 +534,10 @@ class Crawler(object):
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 
-            while await self.sdl.q.get_length_of_pq() != 0:
+            while 1:
+                nonreq_count = await self.sdl.q.get_length_of_pq()
+                if nonreq_count == 0:
+                    break
                 await asyncio.sleep(0.5)
 
             for tasker in self.taskers['Request']:
@@ -538,15 +569,12 @@ class Crawler(object):
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, 'rb') as f:
                     tasks = pickle.load(f)
-                logger.info('Load {} tasks from local file {}.'.format(
-                    len(tasks), self.fi_tasks))
                 for t in tasks:
                     self.sdl_req.q.push_nowait(t)
                     self.counter.task_add()
             if self.fi_df.exists():
                 with open(self.fi_df, 'rb') as f:
                     self.sdl_req.df = pickle.load(f)
-                logger.info('Load Dupefilter from {}'.format(self.fi_df))
 
     def _persist_save(self):
         if self.persistent and not self.redis_enable:
