@@ -16,6 +16,8 @@ from acrawler.item import DefaultItem
 from acrawler.exceptions import SkipTaskError, ReScheduleError
 import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
+from importlib.util import module_from_spec, spec_from_file_location
+import sys
 from pprint import pformat
 from typing import List
 
@@ -78,7 +80,7 @@ class Worker:
                 except Exception as e:
                     logger.error(
                         'Execution of {} occurs {}:{}'.format(task, e.__class__, e))
-                    logger.error(traceback.format_exc())
+                    # logger.error(traceback.format_exc())
                     exception = True
 
                 if self.is_req:
@@ -93,7 +95,7 @@ class Worker:
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
                     else:
-                        logger.error(
+                        logger.warning(
                             '%s failed for %d times. Drop the task!', task, task.tries)
                     self.crawler.counter.task_done(task, 0)
                 else:
@@ -142,8 +144,9 @@ class Counter:
             await self._finished.wait()
 
     def task_add(self):
-        self._unfinished_tasks += 1
-        self._finished.clear()
+        if not self.crawler.lock_always:
+            self._unfinished_tasks += 1
+            self._finished.clear()
 
     def task_done(self, task, success: int = 1):
         for family in task.families:
@@ -151,11 +154,12 @@ class Counter:
                 rc = self.counts.setdefault(family, [0, 0])
                 rc[success] += 1
 
-        if self._unfinished_tasks <= 0:
-            raise ValueError('task_done() called too many times')
-        self._unfinished_tasks -= 1
-        if self._unfinished_tasks == 0:
-            self._finished.set()
+        if not self.crawler.lock_always:
+            if self._unfinished_tasks <= 0:
+                raise ValueError('task_done() called too many times')
+            self._unfinished_tasks -= 1
+            if self._unfinished_tasks == 0:
+                self._finished.set()
 
     def require_req(self, req):
         if self.unicheck:
@@ -256,11 +260,8 @@ class Crawler(object):
         self._form_config()
         self._logging_config()
 
-        self.max_requests = self.config.get('MAX_REQUESTS', 4)
-        self.max_workers = self.config.get('MAX_WORKERS', self.max_requests)
-        self.max_tries = self.config.get('MAX_TRIES', 3)
-
         self.counter: Counter = None
+        self.redis: 'aioredis.Redis' = None
         self.shedulers: Dict[str, 'Scheduler'] = {}
         self._create_schedulers()
         self.workers: List['Worker'] = []
@@ -302,6 +303,9 @@ class Crawler(object):
     async def manager(self):
         """Create multiple workers to execute tasks.
         """
+        self.max_requests = self.config.get('MAX_REQUESTS', 4)
+        self.max_workers = self.config.get('MAX_WORKERS', self.max_requests)
+        self.max_tries = self.config.get('MAX_TRIES', 3)
         try:
             self.loop.create_task(self._log_status_timer())
             for _ in range(self.max_requests):
@@ -384,7 +388,10 @@ class Crawler(object):
         d_config, d_rq_config, d_m_config = config_from_setting(
             DEFAULT_SETTING)
         try:
-            USER_SETTING = import_module('setting')
+            path = (Path.cwd() / sys.argv[0]).parent / 'setting.py'
+            spec = spec_from_file_location('acrawler.usersetting', path)
+            USER_SETTING = module_from_spec(spec)
+            spec.loader.exec_module(USER_SETTING)
             u_config, u_rq_config, u_m_config = config_from_setting(
                 USER_SETTING)
         except ModuleNotFoundError:
