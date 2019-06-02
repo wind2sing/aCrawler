@@ -11,13 +11,13 @@ REQUEST_CONFIG = {
 
 
 MIDDLEWARE_CONFIG = {
-    'acrawler.handlers.RequestPrepareSession': 900,
-    'acrawler.handlers.RequestMergeConfig': 800,
-    'acrawler.handlers.RequestDelay': 700,
-    'acrawler.handlers.ResponseAddCallback': 900,
-    'acrawler.handlers.ResponseCheckStatus': 800,
-    'acrawler.handlers.CrawlerStartAddon': 1000,
-    'acrawler.handlers.ItemCollector': 700,
+    'acrawler.handlers.RequestDelay': 1900,
+    'acrawler.handlers.RequestPrepareSession': 1800,
+    'acrawler.handlers.RequestMergeConfig': 1700,
+    'acrawler.handlers.ResponseAddCallback': 1900,
+    'acrawler.handlers.ResponseCheckStatus': 1800,
+    'acrawler.handlers.CrawlerStartAddon': 2000,
+    'acrawler.handlers.ItemCollector': 1700,
 }
 
 

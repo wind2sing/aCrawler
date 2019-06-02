@@ -101,7 +101,6 @@ class Request(Task):
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
-        self.exception = None
 
     @property
     def url_str(self):
@@ -156,8 +155,7 @@ class Request(Task):
                 logger.info(rt)
                 return rt
         except Exception as e:
-            self.exception = e
-            raise e
+            return e
         finally:
             if to_close:
                 await self.session.close()
@@ -306,7 +304,7 @@ class Response(Task):
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
             for f in func:
-                self.callbacks.append(func)
+                self.callbacks.append(f)
         else:
             self.callbacks.append(func)
 

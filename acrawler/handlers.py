@@ -30,7 +30,8 @@ class RequestPrepareSession(Handler):
     family = 'Request'
 
     async def on_start(self):
-        self.session = ClientSession()
+        self.connector = TCPConnector(limit=None)
+        self.session = ClientSession(connector=self.connector)
         self.crawler._session = self.session
 
     async def handle_before(self, task):

@@ -59,7 +59,7 @@ class Handler(metaclass=HandlerMetaClass):
                  func_after: _Function = None,
                  func_start: _Function = None,
                  func_close: _Function = None,
-                 crawler: _Crawler = None):
+                 ):
         if family:
             self.family = family
 
@@ -74,10 +74,6 @@ class Handler(metaclass=HandlerMetaClass):
         self.set_func(1, func_before)
         self.set_func(2, func_after)
         self.set_func(3, func_close)
-
-    @classmethod
-    def from_crawler(cls, crawler):
-        return cls(crawler=crawler)
 
     @property
     def crawler(self):
@@ -154,7 +150,7 @@ class SingletonMetaclass(type):
 
 class _Middleware(metaclass=SingletonMetaclass):
     handlers = HandlerList()
-    crawler = None
+    crawler: _Crawler = None
 
     def register(self, family: str = None, position: int = None, priority: int = None):
         """The factory method for creating decorators to register handlers to middleware.
@@ -230,7 +226,7 @@ class _Middleware(metaclass=SingletonMetaclass):
             handler.family = family
         if priority:
             handler.priority = priority
-        if handler.priority!=0:
+        if handler.priority != 0:
             self.handlers.append(handler)
         return handler_cls
 
