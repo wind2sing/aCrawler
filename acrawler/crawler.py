@@ -394,7 +394,7 @@ class Crawler(object):
             spec.loader.exec_module(USER_SETTING)
             u_config, u_rq_config, u_m_config = config_from_setting(
                 USER_SETTING)
-        except ModuleNotFoundError:
+        except (ModuleNotFoundError, FileNotFoundError):
             u_config, u_rq_config, u_m_config = ({}, {}, {})
 
         self.config = merge_config(

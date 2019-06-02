@@ -16,19 +16,20 @@ logger = logging.getLogger(__name__)
 class Item(Task, collections.MutableMapping):
     """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping 
     so it provide a dictionary interface. Also you can use `Item.content` to directly access content.
-    
+
     Attributes:
         extra: During initialing, :attr:`content` will be updated from extra at first.
         content: Item stores information in the `content`, which is a dictionary.
     """
     log = False
 
-
     def __init__(self, extra: dict = None, **kwargs
                  ):
         dont_filter = kwargs.pop('dont_filter', True)
+        ignore_exception = kwargs.pop('ignore_exception', True)
         super().__init__(
             dont_filter=dont_filter,
+            ignore_exception=ignore_exception,
             **kwargs
         )
         self.extra = extra or {}
@@ -87,12 +88,12 @@ class Item(Task, collections.MutableMapping):
     def __str__(self):
         return "<%s> (%s)" % ('Task Item', self.__class__.__name__)
 
+
 class DefaultItem(Item):
     """ Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
 
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
-    
 
 
 class Processors(object):
@@ -136,7 +137,7 @@ class ParselItem(Item):
         css_rules: use css selector and get a list with all results.
         xpath_rules: use xpath selector and get a list with all results.
         re_rules: use re selector and get a list with all results.
-    
+
     Examples:
         A simple example to extract title and upper the title::
 
@@ -221,16 +222,14 @@ class ParselItem(Item):
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
 
-
         self.content.update(self.process(item))
         return self.content
-
 
     def process(self, item):
         # Call field processors.
         for processor in self.default_processors:
             for field in item.keys():
-                    item[field] = processor(item[field])
+                item[field] = processor(item[field])
 
         for field, processors in self.field_processors.items():
             if isinstance(processors, list):

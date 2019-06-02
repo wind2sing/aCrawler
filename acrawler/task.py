@@ -76,7 +76,11 @@ class Task:
         else:
             self.exetime = self.init_time
 
+        #: The timestamp of task' last execution time.
         self.last_crawl_time = None
+
+        #: a list to store exceptions occurs during execution
+        self.exceptions = None
 
     @property
     def score(self):
@@ -111,15 +115,22 @@ class Task:
         """
         self.last_crawl_time = time.time()
         self.tries += 1
+        self.exceptions = []
 
         for handler in self.middleware.handlers:
             await handler.handle(position=1, task=self)
 
         async for task in self._execute(**kwargs):
-            yield task
+            if isinstance(task, Exception):
+                self.exceptions.append(task)
+            else:
+                yield task
 
         for handler in self.middleware.handlers:
             await handler.handle(position=2, task=self)
+
+        for exception in self.exceptions:
+            raise exception
 
     async def _execute(self, **kwargs: Any) -> _TaskGenerator:
         """should be rewritten as a generator in the subclass."""

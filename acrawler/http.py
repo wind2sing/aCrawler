@@ -208,7 +208,12 @@ class Response(Task):
                  **kwargs
                  ):
         dont_filter = kwargs.pop('dont_filter', True)
-        super().__init__(dont_filter=dont_filter, **kwargs)
+        ignore_exception = kwargs.pop('ignore_exception', True)
+        super().__init__(
+            dont_filter=dont_filter,
+            ignore_exception=ignore_exception,
+            **kwargs
+        )
         self.url = url
         self.status = status
         self.cookies = cookies
