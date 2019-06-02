@@ -1,25 +1,29 @@
 
 import asyncio
 import logging
+import pickle
+import signal
+import sys
 import time
 import traceback
-import signal
-import pickle
-from pathlib import Path
-
-from acrawler.task import Task, SpecialTask
-from acrawler.http import Request
-from acrawler.scheduler import Scheduler, RedisDupefilter, RedisPQ
-from acrawler.middleware import middleware
-from acrawler.utils import merge_config, config_from_setting, to_asyncgen
-from acrawler.item import DefaultItem
-from acrawler.exceptions import SkipTaskError, ReScheduleError
-import acrawler.setting as DEFAULT_SETTING
 from importlib import import_module
 from importlib.util import module_from_spec, spec_from_file_location
-import sys
+from pathlib import Path
 from pprint import pformat
-from typing import List
+# typing
+from typing import Any, Dict, List
+
+from async_timeout import timeout
+
+import acrawler
+import acrawler.setting as DEFAULT_SETTING
+from acrawler.exceptions import ReScheduleError, SkipTaskError
+from acrawler.http import Request
+from acrawler.item import DefaultItem
+from acrawler.middleware import middleware
+from acrawler.scheduler import RedisDupefilter, RedisPQ, Scheduler
+from acrawler.task import SpecialTask, Task
+from acrawler.utils import config_from_setting, merge_config, to_asyncgen
 
 try:
     import uvloop
@@ -27,9 +31,6 @@ try:
 except ImportError:
     pass
 
-# typing
-from typing import Dict, Any
-import acrawler
 
 _Config = Dict[str, Any]
 _Response = acrawler.http.Response
@@ -79,7 +80,7 @@ class Worker:
                     raise e
                 except Exception as e:
                     logger.error(
-                        'Execution of {} occurs {}:{}'.format(task, e.__class__, e))
+                        '{} -> {}:{}'.format(task, e.__class__, e))
                     # logger.error(traceback.format_exc())
                     exception = True
 
@@ -90,13 +91,11 @@ class Worker:
                 if exception:
                     if not task.ignore_exception and task.tries < self._max_tries:
                         logger.warning(
-                            '%s failed for %d times. Retry...',
-                            task, task.tries)
+                            '{} failed for {} times. Retry...'.format(task, task.tries))
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
                     else:
-                        logger.warning(
-                            '%s failed for %d times. Drop the task!', task, task.tries)
+                        logger.warning('Drop the {}'.format(task))
                     self.crawler.counter.task_done(task, 0)
                 else:
                     self.crawler.counter.task_done(task, 1)
@@ -265,6 +264,7 @@ class Crawler(object):
         self.shedulers: Dict[str, 'Scheduler'] = {}
         self._create_schedulers()
         self.workers: List['Worker'] = []
+        self.taskers = {'Request': [], 'Default': []}
 
         self.middleware = middleware
         """Singleton object :class:`acrawler.middleware.middleware`"""
@@ -317,7 +317,6 @@ class Crawler(object):
             logger.info('Create %d request workers', self.max_requests)
             logger.info('Create %d workers', self.max_workers)
             self.start_time = time.time()
-            self.taskers = {'Request': [], 'Default': []}
             for worker in self.workers:
                 if worker.sdl is self.sdl_req:
                     self.taskers['Request'].append(
@@ -394,7 +393,7 @@ class Crawler(object):
             spec.loader.exec_module(USER_SETTING)
             u_config, u_rq_config, u_m_config = config_from_setting(
                 USER_SETTING)
-        except (ModuleNotFoundError, FileNotFoundError):
+        except (FileNotFoundError) as e:
             u_config, u_rq_config, u_m_config = ({}, {}, {})
 
         self.config = merge_config(
@@ -507,7 +506,7 @@ class Crawler(object):
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 
-            while await self.sdl.q.get_length() != 0:
+            while await self.sdl.q.get_length_of_pq() != 0:
                 await asyncio.sleep(0.5)
 
             for tasker in self.taskers['Request']:
@@ -525,8 +524,8 @@ class Crawler(object):
             logger.info("End crawling...")
             self.loop.stop()
         except Exception as e:
+            logger.warning('Errors during shutdown: {}'.format(e))
             logger.error(traceback.format_exc())
-            logger.warning('Errors during shutdown')
             self.loop.stop()
 
     def _persist_load(self):
@@ -586,8 +585,12 @@ class Crawler(object):
             failure = self.counter.counts[family][0]
             logger.info(
                 f'Statistic:{family:<15} ~ success {success}, failure {failure}')
-        logger.info('Normal  Scheduler tasks left:{}'.format(await self.sdl.q.get_length()))
-        logger.info('Request Scheduler tasks left:{}'.format(await self.sdl_req.q.get_length()))
+        logger.info('Normal  Scheduler tasks left, queue:{} waiting:{}'.format(
+            await self.sdl.q.get_length_of_pq(),
+            await self.sdl.q.get_length_of_waiting()))
+        logger.info('Request Scheduler tasks left, queue:{} waiting:{}'.format(
+            await self.sdl_req.q.get_length_of_pq(),
+            await self.sdl_req.q.get_length_of_waiting()))
 
     def __getstate__(self):
         return {}

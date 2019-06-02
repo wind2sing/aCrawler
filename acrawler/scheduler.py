@@ -147,16 +147,16 @@ class AsyncPQ(BaseQueue):
         return self.waiting.put_nowait((task.exetime, task))
 
     async def pop(self):
-        self.transfer_waiting()
+        await self.transfer_waiting()
         while 1:
             try:
                 r = (self.pq.get_nowait())[1]
                 return r
             except asyncio.QueueEmpty:
                 await asyncio.sleep(1)
-                self.transfer_waiting()
+                await self.transfer_waiting()
 
-    def transfer_waiting(self):
+    async def transfer_waiting(self):
         now = time.time()
         while 1:
             try:
@@ -169,13 +169,21 @@ class AsyncPQ(BaseQueue):
             except asyncio.QueueEmpty:
                 break
 
-    def pop_nowait(self):
-        self.transfer_waiting()
-        r = (self.pq.get_nowait())[1]
-        return r
+    # async def pop_nowait(self):
+    #     await self.transfer_waiting()
+    #     r = (self.pq.get_nowait())[1]
+    #     return r
 
     async def get_length(self):
         return self.pq.qsize() + self.waiting.qsize()
+
+    async def get_length_of_pq(self):
+        await self.transfer_waiting()
+        return self.pq.qsize()
+
+    async def get_length_of_waiting(self):
+        await self.transfer_waiting()
+        return self.waiting.qsize()
 
     async def clear(self):
         self.pq = asyncio.PriorityQueue()
@@ -237,7 +245,8 @@ class RedisPQ(BaseQueue):
                 break
 
     async def clear(self):
-        return await self.redis.delete(self.q_key)
+        await self.redis.delete(self.pq_key)
+        await self.redis.delete(self.waiting_key)
 
     async def get_length(self):
         tr = self.redis.multi_exec()
@@ -245,6 +254,16 @@ class RedisPQ(BaseQueue):
         tr.zcard(self.waiting_key)
         l1, l2 = await tr.execute()
         return l1 + l2
+
+    async def get_length_of_pq(self):
+        await self.transfer_waiting()
+        l = await self.redis.zcard(self.pq_key)
+        return l
+
+    async def get_length_of_waiting(self):
+        await self.transfer_waiting()
+        l = await self.redis.zcard(self.waiting_key)
+        return l
 
     async def close(self):
         self.redis.close()
