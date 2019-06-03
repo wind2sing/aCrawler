@@ -20,10 +20,12 @@ async def runweb(crawler: Crawler = None):
     async def add_task(request):
         try:
             query = request.query.copy()
-            ancestor = '@web'+ str(time.time())
+            ancestor = '@web' + str(time.time())
             async for task in crawler.web_add_task_query(query):
                 await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
-            await crawler.counter.join()
+
+            while crawler.counter.ancestor_unfinished[ancestor] != 0:
+                await asyncio.sleep(1)
 
             items = crawler.web_items.pop(ancestor, [])
             if items:

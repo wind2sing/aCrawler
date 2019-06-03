@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 import traceback
+from collections import defaultdict
 from importlib import import_module
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -18,6 +19,7 @@ from async_timeout import timeout
 import acrawler
 import acrawler.setting as DEFAULT_SETTING
 from acrawler.exceptions import ReScheduleError, SkipTaskError
+from acrawler.counter import Counter
 from acrawler.http import Request
 from acrawler.item import DefaultItem
 from acrawler.middleware import middleware
@@ -75,7 +77,7 @@ class Worker:
                     task.exetime = time.time() + e.defer
                     if e.recrawl:
                         task.recrawl = e.recrawl
-                    self.crawler.counter.task_done(task, -1)
+                    await self.crawler.counter.task_done(task, -1)
                     await self.crawler.add_task(task, dont_filter=True)
                     self.current_task = None
                     await asyncio.sleep(0.5)
@@ -83,7 +85,7 @@ class Worker:
                 except Exception as e:
                     logger.error(
                         '{} -> {}:{}'.format(task, e.__class__, e))
-                    # logger.error(traceback.format_exc())
+                    logger.error(traceback.format_exc())
                     exception = True
 
                 if self.is_req:
@@ -96,11 +98,12 @@ class Worker:
                             '{} failed for {} times. Retry...'.format(task, task.tries))
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
+                        await self.crawler.counter.task_done(task, -1)
                     else:
                         logger.warning('Drop the {}'.format(task))
-                    self.crawler.counter.task_done(task, 0)
+                        await self.crawler.counter.task_done(task, 0)
                 else:
-                    self.crawler.counter.task_done(task, 1)
+                    await self.crawler.counter.task_done(task, 1)
 
                 if task.recrawl > 0 and not retry:
                     task.tries = 0
@@ -118,86 +121,6 @@ class Worker:
             raise e
         except Exception as e:
             logger.error(traceback.format_exc())
-
-
-class Counter:
-    """A global counter records unfinished count of tasks and manage requests-limits.
-    """
-
-    def __init__(self, crawler, loop=None):
-        self.crawler = crawler
-        self.counts = {}
-        self._unfinished_tasks = 0
-        self._finished = asyncio.Event(loop=loop)
-        self._finished.set()
-
-        self.conf = self.crawler.config.get(
-            'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
-        self.hosts = self.conf.keys()
-        self.check = len(self.hosts) > 0
-
-        self.uni = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
-        self.uniconf = {}
-        self.unicheck = self.uni > 0
-
-    async def join(self):
-        if self._unfinished_tasks > 0:
-            await self._finished.wait()
-
-    def task_add(self):
-        if not self.crawler.lock_always:
-            self._unfinished_tasks += 1
-            self._finished.clear()
-
-    def task_done(self, task, success: int = 1):
-        for family in task.families:
-            if success != -1:
-                rc = self.counts.setdefault(family, [0, 0])
-                rc[success] += 1
-
-        if not self.crawler.lock_always:
-            if self._unfinished_tasks <= 0:
-                raise ValueError('task_done() called too many times')
-            self._unfinished_tasks -= 1
-            if self._unfinished_tasks == 0:
-                self._finished.set()
-
-    def require_req(self, req):
-        if self.unicheck:
-            count = self.uniconf.setdefault(req.url.host, self.uni)
-            if count > 0:
-                self.uniconf[req.url.host] -= 1
-            else:
-                raise ReScheduleError()
-
-        if self.check:
-            req.chosts = []
-            for host in self.hosts:
-                if host in req.url.host:
-                    req.chosts.append(host)
-                    if self.conf[host] > 0:
-                        self.conf[host] -= 1
-                        continue
-                    else:
-                        raise ReScheduleError()
-
-    def release_req(self, req):
-        if self.unicheck:
-            self.uniconf[req.url.host] += 1
-
-        if self.check and req.chosts:
-            for host in req.chosts:
-                self.conf[host] += 1
-
-    def __getstate__(self):
-        state = self.__dict__
-        state.pop('_finished', None)
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self.__dict__['_finished'] = asyncio.Event()
-        self.__dict__['_finished'].set()
 
 
 class Crawler(object):
@@ -271,7 +194,8 @@ class Crawler(object):
         self.workers: List['Worker'] = []
         self.taskers = {'Request': [], 'Default': []}
         self.shedulers: Dict[str, 'Scheduler'] = {}
-        self._create_schedulers()
+        self._initialize_counter()
+        self._initialize_schedulers()
 
         self.middleware = middleware
         """Singleton object :class:`acrawler.middleware.middleware`"""
@@ -294,6 +218,7 @@ class Crawler(object):
         # Wraps main works and wait until all tasks finish.
         try:
             self.config_logger()
+            await self._persist_load()
             logger.info("Checking middleware's handlers...")
             logger.info(self.middleware)
             logger.info("Start crawling...")
@@ -391,7 +316,7 @@ class Crawler(object):
                 item.ancestor = ancestor
             added = await self.sdl.produce(item, dont_filter=dont_filter)
         if added:
-            self.counter.task_add()
+            await self.counter.task_add(new_task)
             return new_task
         else:
             return False
@@ -463,9 +388,10 @@ class Crawler(object):
     def persistent(self):
         return self.config.get('PERSISTENT', False)
 
-    def _create_schedulers(self):
-        self.counter = Counter(crawler=self, loop=self.loop)
+    def _initialize_counter(self):
+        self.counter = Counter(crawler=self)
 
+    def _initialize_schedulers(self):
         request_df = None
         request_q = None
         if self.redis_enable:
@@ -486,8 +412,6 @@ class Crawler(object):
         }
         self.sdl = self.schedulers['Default']
         self.sdl_req = self.schedulers['Request']
-
-        self._persist_load()
 
     def _add_default_middleware_handler_cls(self):
         # append handlers from middleware_config.
@@ -547,7 +471,7 @@ class Crawler(object):
                     pass
             await self._log_status()
             await self._on_close()
-            self._persist_save()
+            await self._persist_save()
             if signal:
                 self.run_task.cancel()
 
@@ -559,24 +483,28 @@ class Crawler(object):
             logger.error(traceback.format_exc())
             self.loop.stop()
 
-    def _persist_load(self):
+    async def _persist_load(self):
         if self.persistent and not self.redis_enable:
             tag = self.config.get(
                 'PERSISTENT_NAME', None) or self.__class__.__name__
             fname = '.' + tag
             self.fi_tasks: Path = Path.cwd() / ('acrawler' + fname + '.tasks')
             self.fi_df: Path = Path.cwd() / ('acrawler' + fname + '.df')
+            tasks = []
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, 'rb') as f:
                     tasks = pickle.load(f)
                 for t in tasks:
                     self.sdl_req.q.push_nowait(t)
-                    self.counter.task_add()
+                    await self.counter.task_add(t)
+            logger.info('Load {} tasks from local file {}.'.format(
+                len(tasks), self.fi_tasks))
             if self.fi_df.exists():
                 with open(self.fi_df, 'rb') as f:
                     self.sdl_req.df = pickle.load(f)
+                logger.info('Load Dupefilter from {}'.format(self.fi_df))
 
-    def _persist_save(self):
+    async def _persist_save(self):
         if self.persistent and not self.redis_enable:
             tasks = []
             with open(self.fi_tasks, 'wb') as f:
