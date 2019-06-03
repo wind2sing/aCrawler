@@ -332,7 +332,7 @@ class Crawler(object):
             spec.loader.exec_module(USER_SETTING)
             u_config, u_rq_config, u_m_config = config_from_setting(
                 USER_SETTING)
-        except (FileNotFoundError) as e:
+        except (FileNotFoundError):
             u_config, u_rq_config, u_m_config = ({}, {}, {})
 
         self.config = merge_config(
@@ -488,24 +488,29 @@ class Crawler(object):
             tag = self.config.get(
                 'PERSISTENT_NAME', None) or self.__class__.__name__
             fname = '.' + tag
+            self.fi_counter: Path = Path.cwd() / ('acrawler' + fname + '.counter')
             self.fi_tasks: Path = Path.cwd() / ('acrawler' + fname + '.tasks')
             self.fi_df: Path = Path.cwd() / ('acrawler' + fname + '.df')
+            if self.fi_counter.exists():
+                with open(self.fi_counter, 'rb') as f:
+                    self.counter = pickle.load(f)
             tasks = []
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, 'rb') as f:
                     tasks = pickle.load(f)
                 for t in tasks:
                     self.sdl_req.q.push_nowait(t)
-                    await self.counter.task_add(t)
+                    # await self.counter.task_add(t)
             logger.info('Load {} tasks from local file {}.'.format(
                 len(tasks), self.fi_tasks))
             if self.fi_df.exists():
                 with open(self.fi_df, 'rb') as f:
                     self.sdl_req.df = pickle.load(f)
-                logger.info('Load Dupefilter from {}'.format(self.fi_df))
 
     async def _persist_save(self):
         if self.persistent and not self.redis_enable:
+            with open(self.fi_counter, 'wb') as f:
+                pickle.dump(self.counter, f)
             tasks = []
             with open(self.fi_tasks, 'wb') as f:
                 while 1:
@@ -526,7 +531,6 @@ class Crawler(object):
 
             with open(self.fi_df, 'wb') as f:
                 pickle.dump(self.sdl_req.df, f)
-            logger.info('Dump Dupefilter to {}'.format(self.fi_df))
 
     async def _log_status_timer(self):
         while True:

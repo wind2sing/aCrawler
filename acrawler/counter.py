@@ -7,14 +7,12 @@ class BaseCounter:
 
     def __init__(self, crawler):
         self.crawler = crawler
-        self.counts = {}
 
-        self.unfinished = 0
         self.ancestor_unfinished = defaultdict(int)
 
         self.conf = self.crawler.config.get(
             'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
-        self.hosts = self.conf.keys()
+        self.hosts = list(self.conf.keys())
         self.check = len(self.hosts) > 0
 
         self.uni = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
@@ -114,4 +112,7 @@ class Counter(BaseCounter):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.__dict__['_finished'] = asyncio.Event()
-        self.__dict__['_finished'].set()
+        if self.unfinished == 0:
+            self._finished.set()
+        else:
+            self._finished.clear()

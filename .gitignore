@@ -2,6 +2,7 @@
 .envrc
 *.df
 *.tasks
+*.counter
 
 # Created by https://www.gitignore.io/api/macos,visualstudiocode,python
 # Edit at https://www.gitignore.io/?templates=macos,visualstudiocode,python
