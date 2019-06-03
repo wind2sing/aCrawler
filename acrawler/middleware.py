@@ -104,7 +104,7 @@ class Handler(metaclass=HandlerMetaClass):
         if position == 0 or position == 3:
             await self._call_func(position)
         elif position == 1 or position == 2:
-            if task and self.family in task.families:
+            if self.family in task.families:
                 await self._call_func(position, task)
 
     def set_func(self, position: int, func):

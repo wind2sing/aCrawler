@@ -1,3 +1,5 @@
+from multidict import CIMultiDictProxy
+from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
 import asyncio
@@ -15,14 +17,12 @@ from parsel import Selector, SelectorList
 from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod, signature
+
 # Typing
 
-from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
-from multidict import CIMultiDictProxy
-import http
+
 _Function = Callable
 _Functions = Union[_Function, List[_Function]]
-_Cookies = 'http.cookies.SimpleCookie'
 _History = List['aiohttp.ClientResponse']
 _TaskGenerator = AsyncGenerator['Task', None]
 _LooseURL = Union[URL, str]
@@ -197,7 +197,7 @@ class Response(Task):
     def __init__(self,
                  url: URL,
                  status: int,
-                 cookies: _Cookies,
+                 cookies: 'http.cookies.SimpleCookie',
                  headers: CIMultiDictProxy,
                  history: _History,
                  request: Request,

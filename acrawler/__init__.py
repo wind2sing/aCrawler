@@ -8,15 +8,3 @@ from .utils import get_logger
 from .exceptions import SkipTaskError, ReScheduleError
 
 import logging
-
-LOGGER = logging.getLogger(__name__)
-
-
-handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    "%(asctime)s %(name)-20s %(levelname)-8s %(message)s")
-handler.setFormatter(formatter)
-
-
-LOGGER.addHandler(handler)
-LOGGER.setLevel(logging.DEBUG)
