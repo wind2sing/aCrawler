@@ -95,7 +95,7 @@ class Worker:
                 if exception:
                     if not task.ignore_exception and task.tries < self._max_tries:
                         logger.warning(
-                            '{} failed for {} times. Retry...'.format(task, task.tries))
+                            '{} failed. Retry...'.format(task))
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
                         await self.crawler.counter.task_done(task, -1)
@@ -134,9 +134,9 @@ class Crawler(object):
     """Ready for vanilla :meth:`start_requests`"""
 
     parsers: List['acrawler.Parser'] = []
-    """Shortcuts for parsing response. 
+    """Shortcuts for parsing response.
 
-    Crawler will automatically append :meth:`acrawler.parser.Parser.parse` to response's 
+    Crawler will automatically append :meth:`acrawler.parser.Parser.parse` to response's
     callbacks list for each parser in parsers.
     """
 
@@ -192,7 +192,7 @@ class Crawler(object):
         self.counter: Counter = None
         self.redis: 'aioredis.Redis' = None
         self.workers: List['Worker'] = []
-        self.taskers = {'Request': [], 'Default': []}
+        self.taskers = {'Request': [], 'Default': [], 'Others': []}
         self.shedulers: Dict[str, 'Scheduler'] = {}
         self._initialize_counter()
         self._initialize_schedulers()
@@ -429,6 +429,11 @@ class Crawler(object):
         """This method will be binded to the event loop as a task. You can add task manually in this method."""
         pass
 
+    def create_task(self, coro):
+        task = self.loop.create_task(coro)
+        self.taskers['Others'].append(task)
+        return task
+
     async def _on_start(self):
         # call handlers's on_start()
         for sdl in self.schedulers.values():
@@ -469,6 +474,14 @@ class Crawler(object):
                     await tasker
                 except asyncio.CancelledError:
                     pass
+
+            # for tasker in self.taskers['Others']:
+            #     tasker.cancel()
+            # for tasker in self.taskers['Others']:
+            #     try:
+            #         await tasker
+            #     except asyncio.CancelledError:
+            #         pass
             await self._log_status()
             await self._on_close()
             await self._persist_save()
@@ -500,7 +513,6 @@ class Crawler(object):
                     tasks = pickle.load(f)
                 for t in tasks:
                     self.sdl_req.q.push_nowait(t)
-                    # await self.counter.task_add(t)
             logger.info('Load {} tasks from local file {}.'.format(
                 len(tasks), self.fi_tasks))
             if self.fi_df.exists():
@@ -540,9 +552,10 @@ class Crawler(object):
     async def _log_status(self):
         time_delta = time.time() - self.start_time
         logger.info(f'Statistic: working {time_delta:.2f}s')
-        for family in self.counter.counts.keys():
-            success = self.counter.counts[family][1]
-            failure = self.counter.counts[family][0]
+        counts_dict = await self.counter.get_counts_dict()
+        for family in counts_dict.keys():
+            success = counts_dict[family][1]
+            failure = counts_dict[family][0]
             logger.info(
                 f'Statistic:{family:<15} ~ success {success}, failure {failure}')
         logger.info('Normal  Scheduler tasks left, queue:{} waiting:{}'.format(
@@ -571,7 +584,7 @@ class CrawlerStart(SpecialTask):
 
     async def _execute(self):
         await self._produce_tasks_from_start_requests()
-        self.loop.create_task(self.crawler.next_requests())
+        self.crawler.create_task(self.crawler.next_requests())
 
     async def _produce_tasks_from_start_requests(self):
         logger.info("Produce initial tasks...")

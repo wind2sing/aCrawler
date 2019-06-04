@@ -101,8 +101,8 @@ async def redis_push_start_urls_coro(key: str, url: str = None, address: str = '
     redis = await aioredis.create_redis_pool(address)
     if isinstance(url, list):
         for u in url:
-            await redis.rpush(key, u)
+            await redis.sadd(key, u)
     else:
-        await redis.rpush(key, url)
+        await redis.sadd(key, url)
     redis.close()
     await redis.wait_closed()

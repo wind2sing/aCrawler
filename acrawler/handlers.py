@@ -1,4 +1,6 @@
+import traceback
 from acrawler.middleware import Handler, middleware
+from acrawler.counter import RedisCounter
 import importlib
 import sys
 import functools
@@ -235,7 +237,9 @@ class CrawlerStartAddon(Handler):
         if self.do_redis:
             aioredis = check_import('aioredis')
             self.redis = await aioredis.create_redis_pool(address=self.crawler.config.get('REDIS_ADDRESS'))
-        self.crawler.redis = self.redis
+            self.crawler.redis = self.redis
+            self.crawler.counter = RedisCounter(self.crawler)
+            self.crawler.counter.redis = self.redis
 
         if self.do_web:
             web = check_import('acrawler.web')
@@ -244,17 +248,21 @@ class CrawlerStartAddon(Handler):
     async def handle_after(self, task):
         if self.do_redis:
             self.redis_start_key = self.crawler.config.get('REDIS_START_KEY')
-            self.crawler.loop.create_task(
+            self.crawler.create_task(
                 self._next_requests_from_redis_start())
 
     async def _next_requests_from_redis_start(self):
         start_key = self.crawler.config.get('REDIS_START_KEY')
         if start_key:
             while True:
-                _, url = await self.redis.blpop(start_key)
-                task = Request(str(url, encoding="utf-8"),
-                               callback=self.crawler.parse)
-                await self.crawler.add_task(task)
+                url = await self.redis.spop(start_key)
+                if url:
+                    url = url.decode()
+                    task = Request(url,
+                                   callback=self.crawler.parse)
+                    await self.crawler.add_task(task)
+                else:
+                    await asyncio.sleep(0.5)
 
     async def on_close(self):
         if self.do_web:

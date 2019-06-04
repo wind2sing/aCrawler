@@ -34,12 +34,18 @@ class BaseCounter:
     def join_by_ancestor_unfinished(self):
         raise NotImplementedError()
 
+    async def get_counts(self):
+        raise NotImplementedError()
+
     async def task_add(self, task):
         await self.unfinished_inc(task)
 
     async def task_done(self, task, flag: int = 1):
         await self.unfinished_dec(task)
         await self.counts_inc(task, flag)
+
+    async def get_counts_dict(self):
+        raise NotImplementedError()
 
     def require_req(self, req):
         if self.unicheck:
@@ -89,20 +95,25 @@ class Counter(BaseCounter):
             rc = self.counts.setdefault(task.primary_family, [0, 0])
             rc[flag] += 1
 
+    async def get_counts_dict(self):
+        return self.counts
+
     async def unfinished_inc(self, task):
         self.ancestor_unfinished[task.ancestor] += 1
-        if not self.crawler.lock_always:
-            self.unfinished += 1
-            self._finished.clear()
+        # if not self.crawler.lock_always:
+        #     self.unfinished += 1
+        #     self._finished.clear()
+        self.unfinished += 1
+        self._finished.clear()
 
     async def unfinished_dec(self, task):
         self.ancestor_unfinished[task.ancestor] -= 1
-        if not self.crawler.lock_always:
-            if self.unfinished <= 0:
-                raise ValueError('task_done() called too many times')
-            self.unfinished -= 1
-            if self.unfinished == 0:
-                self._finished.set()
+        # if not self.crawler.lock_always:
+        if self.unfinished <= 0:
+            raise ValueError('task_done() called too many times')
+        self.unfinished -= 1
+        if self.unfinished == 0:
+            self._finished.set()
 
     def __getstate__(self):
         state = self.__dict__
@@ -116,3 +127,63 @@ class Counter(BaseCounter):
             self._finished.set()
         else:
             self._finished.clear()
+
+
+class RedisCounter(BaseCounter):
+    """A counter use redis to store information.
+    """
+
+    def __init__(self, crawler):
+        super().__init__(crawler)
+        self.redis = None
+        cname = crawler.__class__.__name__
+        # a redis int
+        self.unfinished_key = 'acrawler:' + cname + ':c:unfinished'
+        # Redis Sorted Set
+        self.ancestor_unfinished_key = 'acrawler:' + cname + ':c:ancestor_unfinished'
+        # Redis Sorted Set
+        self.counts_key_suc = 'acrawler:' + cname + ':c:counts_suc'
+        self.counts_key_fail = 'acrawler:' + cname + ':c:counts_fail'
+
+        self._finished = asyncio.Event(loop=crawler.loop)
+        self._finished.set()
+
+    async def join(self):
+        if await self.get_unfinished() > 0:
+            await self._finished.wait()
+
+    async def counts_inc(self, task, flag):
+        if flag != -1:
+            if flag == 1:
+                await self.redis.zincrby(self.counts_key_suc, 1, task.primary_family)
+            elif flag == 0:
+                await self.redis.zincrby(self.counts_key_fail, 1, task.primary_family)
+
+    async def get_unfinished(self):
+        return int(await self.redis.get(self.unfinished_key) or 0)
+
+    async def get_counts_dict(self):
+        res = {}
+        async for val, score in self.redis.izscan(self.counts_key_suc):
+            rc = res.setdefault(val.decode(), [0, 0])
+            rc[1] = int(score)
+        async for val, score in self.redis.izscan(self.counts_key_fail):
+            rc = res.setdefault(val.decode(), [0, 0])
+            rc[0] = int(score)
+
+        return res
+
+    async def unfinished_inc(self, task):
+        tr = self.redis.multi_exec()
+        tr.zincrby(self.ancestor_unfinished_key, 1, task.ancestor)
+        tr.incr(self.unfinished_key)
+        await tr.execute()
+        self._finished.clear()
+
+    async def unfinished_dec(self, task):
+        tr = self.redis.multi_exec()
+        tr.zincrby(self.ancestor_unfinished_key, -1, task.ancestor)
+        tr.decr(self.unfinished_key)
+        _, res = await tr.execute()
+        if int(res) == 0:
+            self._finished.set()
