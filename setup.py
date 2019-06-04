@@ -6,7 +6,7 @@ DESCRIPTION = 'A simple web-crawling framework, based on aiohttp.'
 URL = 'https://github.com/pansenlin30/aCrawler'
 EMAIL = 'zireael.me@gmail.com'
 AUTHOR = 'Pan Senlin'
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 
 packages = ['acrawler']
 requires = [

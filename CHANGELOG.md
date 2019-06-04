@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.7](https://github.com/pansenlin30/aCrawler/compare/v0.0.6...v0.0.7) (2019-06-04)
+
+
+### Bug Fixes
+
+* **crawler:** cancel task correctly ([803160f](https://github.com/pansenlin30/aCrawler/commit/803160f))
+* **crawler:** crawler's method can be pickled now ([480b8f0](https://github.com/pansenlin30/aCrawler/commit/480b8f0))
+* **crawler:** dynamically configure & style fix ([03d975f](https://github.com/pansenlin30/aCrawler/commit/03d975f))
+* **crawler:** enable attributes are properties now ([b8d67c0](https://github.com/pansenlin30/aCrawler/commit/b8d67c0))
+* **crawler:** import user setting ([8630714](https://github.com/pansenlin30/aCrawler/commit/8630714))
+* **crawler:** shutdown correctly to wait for nonrequest and nonwaiting tasks ([badf859](https://github.com/pansenlin30/aCrawler/commit/badf859))
+* **crawler:** start_requests() supports NonRequest Task ([cbc5271](https://github.com/pansenlin30/aCrawler/commit/cbc5271))
+* **crawler:** start,finish are methods now ([5872fc4](https://github.com/pansenlin30/aCrawler/commit/5872fc4))
+* **handler:** check before add callbacks to response ([0c4061f](https://github.com/pansenlin30/aCrawler/commit/0c4061f))
+* **http:** initialize Response directly ([bc6aafc](https://github.com/pansenlin30/aCrawler/commit/bc6aafc))
+* **setting:** clear relations of config redis/web/lock ([aaae1d9](https://github.com/pansenlin30/aCrawler/commit/aaae1d9))
+* **task:** better retry/recrawl & ignore_exception ([cd4ff49](https://github.com/pansenlin30/aCrawler/commit/cd4ff49))
+* **task:** default fingerprint is __hash__() ([b53e6d4](https://github.com/pansenlin30/aCrawler/commit/b53e6d4))
+
+
+### Features
+
+* **counter:** enable persistence ([ed1fbbe](https://github.com/pansenlin30/aCrawler/commit/ed1fbbe))
+* **counter:** implement counter in diff module ([7f11017](https://github.com/pansenlin30/aCrawler/commit/7f11017))
+* **counter:** implement Redis Counter ([2a8d9ba](https://github.com/pansenlin30/aCrawler/commit/2a8d9ba))
+* **counter:** support join_by_ancestor ([e59587c](https://github.com/pansenlin30/aCrawler/commit/e59587c))
+* **crawler:** support customed web_add_task_query() ([926d411](https://github.com/pansenlin30/aCrawler/commit/926d411))
+* **crawler:** support LOCK_ALWAYS without Counter ([3acb588](https://github.com/pansenlin30/aCrawler/commit/3acb588))
+* **crawler:** support ReScheduleError ([b797272](https://github.com/pansenlin30/aCrawler/commit/b797272))
+* **crawler:** support web service (add_task) ([0face33](https://github.com/pansenlin30/aCrawler/commit/0face33))
+* **http:** response now has property: json ([8da841c](https://github.com/pansenlin30/aCrawler/commit/8da841c))
+* **http:** support MAX_REQUESTS_PER_HOST ([23dbc85](https://github.com/pansenlin30/aCrawler/commit/23dbc85))
+* **http:** support MAX_REQUESTS_PER_HOST / SPECIAL_HOST using Counter ([feb7139](https://github.com/pansenlin30/aCrawler/commit/feb7139))
+* **task:** support ignore_exception and exceptions ([1a188b0](https://github.com/pansenlin30/aCrawler/commit/1a188b0))
+* **task:** support SkipTaskError ([0edcb87](https://github.com/pansenlin30/aCrawler/commit/0edcb87))
+
+
+### refactor
+
+* **settings:** max_requests not accepted as Crawler's attribute ([dc36db9](https://github.com/pansenlin30/aCrawler/commit/dc36db9))
+
+
+### Tests
+
+* two errors ([ac47cc1](https://github.com/pansenlin30/aCrawler/commit/ac47cc1))
+
+
+### BREAKING CHANGES
+
+* **settings:** You must use config to assign MAX_REQUESTS
+
+
+
 ### [0.0.6](https://github.com/pansenlin30/aCrawler/compare/v0.0.5...v0.0.6) (2019-05-27)
 
 
