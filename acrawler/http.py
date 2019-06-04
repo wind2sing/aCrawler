@@ -142,15 +142,18 @@ class Request(Task):
                 body = await cresp.read()
                 encoding = self.encoding or cresp.get_encoding()
 
-                self.response = await Response.from_ClientResponse(url=cresp.url,
-                                                                   status=cresp.status,
-                                                                   cookies=cresp.cookies,
-                                                                   headers=cresp.headers,
-                                                                   history=cresp.history,
-                                                                   body=body,
-                                                                   encoding=encoding,
-                                                                   request=self,
-                                                                   family=self.httpfamily)
+                self.response = Response(url=cresp.url,
+                                         status=cresp.status,
+                                         cookies=cresp.cookies,
+                                         headers=cresp.headers,
+                                         history=cresp.history,
+                                         body=body,
+                                         encoding=encoding,
+                                         callbacks=self.callbacks,
+                                         request=self,
+                                         request_info=cresp.request_info,
+                                         meta=self.meta,
+                                         family=self.httpfamily)
                 rt = self.response
                 logger.info(rt)
                 return rt
@@ -201,6 +204,7 @@ class Response(Task):
                  headers: CIMultiDictProxy,
                  history: _History,
                  request: Request,
+                 request_info,
                  body: bytes,
                  encoding: str,
                  callbacks: _Functions = None,
@@ -223,6 +227,7 @@ class Response(Task):
         self.encoding = encoding
         self.meta = meta
         self.request = request
+        self.request_info = request_info
         self.callbacks = callbacks
         self.ok = (self.status == 200) or (self.request.status_allowed == []) or (
             (self.request.status_allowed) and (self.status in self.request.status_allowed))
@@ -231,24 +236,6 @@ class Response(Task):
         self._text = None
         self._json = None
         self._sel: Selector = None
-
-    @classmethod
-    async def from_ClientResponse(cls, url, status, cookies, headers, history, body, encoding, request: Request, **kwargs):
-
-        r = cls(
-            url=url,
-            status=status,
-            cookies=cookies,
-            headers=headers,
-            history=history,
-            meta=request.meta,
-            callbacks=request.callbacks,
-            request=request,
-            body=body,
-            encoding=encoding,
-            **kwargs
-        )
-        return r
 
     @property
     def text(self):
