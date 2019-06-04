@@ -8,8 +8,6 @@ class BaseCounter:
     def __init__(self, crawler):
         self.crawler = crawler
 
-        self.ancestor_unfinished = defaultdict(int)
-
         self.conf = self.crawler.config.get(
             'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
         self.hosts = list(self.conf.keys())
@@ -82,6 +80,7 @@ class Counter(BaseCounter):
     def __init__(self, crawler):
         super().__init__(crawler)
         self.counts = {}
+        self.ancestor_unfinished = defaultdict(int)
         self.unfinished = 0
         self._finished = asyncio.Event(loop=crawler.loop)
         self._finished.set()
@@ -89,6 +88,10 @@ class Counter(BaseCounter):
     async def join(self):
         if self.unfinished > 0:
             await self._finished.wait()
+
+    async def join_by_ancestor_unfinished(self, ancestor):
+        while self.ancestor_unfinished[ancestor] != 0:
+            await asyncio.sleep(0.5)
 
     async def counts_inc(self, task, flag):
         if flag != -1:
@@ -151,6 +154,10 @@ class RedisCounter(BaseCounter):
     async def join(self):
         if await self.get_unfinished() > 0:
             await self._finished.wait()
+
+    async def join_by_ancestor_unfinished(self, ancestor):
+        while (await self.redis.zscore(self.ancestor_unfinished_key, ancestor)) != 0:
+            await asyncio.sleep(0.5)
 
     async def counts_inc(self, task, flag):
         if flag != -1:
