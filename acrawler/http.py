@@ -362,6 +362,12 @@ class FileRequest(Request):
 
 
 class BrowserRequest(Request):
+    """A derived Request using `pyppeteer` to crawl pages.
+
+    There are two ways to directly deal with `pyppeteer.page.Page`. You can rewrite
+    method :meth:`operate_page` or pass `page_callback` as parameter. Callback 
+    function accepts two parameters: `page` and `resposne`.
+    """
 
     def __init__(self, url, page_callback=None, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
         super().__init__(url, callback=callback, method=method, request_config=request_config,

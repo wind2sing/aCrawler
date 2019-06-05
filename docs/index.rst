@@ -30,7 +30,7 @@ Feature
 * Middleware: add handlers before or after tasks
 * Simple shortcuts to speed up scripting
 * Parse html conveniently with `Parsel <https://parsel.readthedocs.io/en/latest/>`_
-* Support JavaScript/browser-automation with `pyppeteer <https://github.com/miyakogi/pyppeteer>`
+* Support JavaScript/browser-automation with `pyppeteer <https://github.com/miyakogi/pyppeteer>`_
 * Stop and Resume: crawl periodically and persistently
 * Distributed work support with Redis
 

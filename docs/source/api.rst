@@ -31,6 +31,9 @@ HTTP Task
 .. autoclass:: acrawler.http.FileRequest
     :members:
 
+.. autoclass:: acrawler.http.BrowserRequest
+    :members:
+
 
 Item Task
 *********
