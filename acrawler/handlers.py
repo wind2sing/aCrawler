@@ -43,6 +43,25 @@ class RequestPrepareSession(Handler):
         await self.session.close()
 
 
+class RequestPrepareBrowser(Handler):
+    family = 'BrowserRequest'
+
+    async def on_start(self):
+        from aninja.client import launch
+        from aninja.cookies import CookiesManager
+        self.cookies_manager = CookiesManager()
+        self.client = await launch(cookies_manager=self.cookies_manager)
+
+    async def handle_before(self, req):
+        req.client = self.client
+
+    async def handle_after(self, req):
+        req.client = None
+
+    async def on_close(self):
+        await self.client.close()
+
+
 class ResponseCheckStatus(Handler):
     """a handler check response's status and will retry the request if it failed.
 

@@ -98,6 +98,7 @@ class Request(Task):
             self.add_callback(callback)
         self.request_config = request_config if request_config else {}
         self.session = None
+        self.client = None
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
@@ -126,7 +127,8 @@ class Request(Task):
 
     async def _execute(self, **kwargs):
         """Wraps :meth:`fetch`"""
-        yield await self.fetch()
+        async for task in self.fetch():
+            yield task
 
     async def fetch(self):
         """Sends a request and return the response as a task."""
@@ -156,9 +158,9 @@ class Request(Task):
                                          family=self.httpfamily)
                 rt = self.response
                 logger.info(rt)
-                return rt
+                yield rt
         except Exception as e:
-            return e
+            yield e
         finally:
             if to_close:
                 await self.session.close()
@@ -304,7 +306,7 @@ class Response(Task):
         self.callbacks = []
 
     def __str__(self):
-        return f"<Task Response> <{self.status}> ({self.url})"
+        return "<Task Response> <{}> ({})".format(self.status, self.url)
 
 
 async def file_save_callback(response: Response):
@@ -357,3 +359,36 @@ class FileRequest(Request):
 
         async for task in super()._execute(**kwargs):
             yield task
+
+
+class BrowserRequest(Request):
+
+    def __init__(self, url, page_callback=None, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
+        super().__init__(url, callback=callback, method=method, request_config=request_config,
+                         dont_filter=dont_filter, meta=meta, priority=priority, family=family, *args, **kwargs)
+        self.page_callback = page_callback
+
+    async def fetch(self):
+        """Sends a request and return the response as a task."""
+        try:
+            page = await self.client.newPage()
+            if self.url_str:
+                resp = await page.goto(self.url_str)
+                logger.info('<Task BrowserRequest> <{}> ({})'.format(
+                    resp.status, resp.url))
+            else:
+                resp = None
+            async for task in to_asyncgen(self.operate_page, page, resp):
+                yield task
+            async for task in to_asyncgen(self.page_callback, page, resp):
+                yield task
+        except Exception as e:
+            yield e
+        finally:
+            await self.client.cookies_manager.update_from_pyppeteer(page)
+            await page.close()
+
+    async def operate_page(self, page, response):
+        """Can be rewritten for customed operation on the page. Should be a asyncgenerator to yield new tasks.
+        """
+        yield None
