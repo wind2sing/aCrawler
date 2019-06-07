@@ -166,18 +166,20 @@ class Request(Task):
                 await self.session.close()
 
     def __str__(self):
-        return "<%s> (%s)" % ('Task Request', self.url)
+        return "<Task %s> (%s)" % (self.__class__.__name__, self.url)
 
     def __getstate__(self):
         state = super().__getstate__()
         state.pop('session', None)
         state.pop('response', None)
+        state.pop('client', None)
         return state
 
     def __setstate__(self, state):
         super().__setstate__(state)
         self.__dict__['response'] = None
         self.__dict__['session'] = None
+        self.__dict__['client'] = None
 
 
 class Response(Task):
@@ -373,26 +375,28 @@ class BrowserRequest(Request):
         super().__init__(url, callback=callback, method=method, request_config=request_config,
                          dont_filter=dont_filter, meta=meta, priority=priority, family=family, *args, **kwargs)
         self.page_callback = page_callback
+        self.page = None
 
     async def fetch(self):
         """Sends a request and return the response as a task."""
         try:
-            page = await self.client.newPage()
+            self.page = await self.client.newPage()
             if self.url_str:
-                resp = await page.goto(self.url_str)
+                resp = await self.page.goto(self.url_str)
                 logger.info('<Task BrowserRequest> <{}> ({})'.format(
                     resp.status, resp.url))
             else:
                 resp = None
-            async for task in to_asyncgen(self.operate_page, page, resp):
+            async for task in to_asyncgen(self.operate_page, self.page, resp):
                 yield task
-            async for task in to_asyncgen(self.page_callback, page, resp):
+            async for task in to_asyncgen(self.page_callback, self.page, resp):
                 yield task
         except Exception as e:
             yield e
         finally:
-            await self.client.cookies_manager.update_from_pyppeteer(page)
-            await page.close()
+            await self.client.cookies_manager.update_from_pyppeteer(self.page)
+            await self.page.close()
+            self.page = None
 
     async def operate_page(self, page, response):
         """Can be rewritten for customed operation on the page. Should be a asyncgenerator to yield new tasks.
