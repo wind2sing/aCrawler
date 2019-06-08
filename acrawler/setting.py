@@ -24,6 +24,8 @@ MIDDLEWARE_CONFIG = {
 DOWNLOAD_DELAY = 0
 """Every Request worker will delay some seconds before sending a new Request"""
 
+DISABLE_COOKIES = False
+
 LOG_LEVEL = 'INFO'
 """Default log level."""
 

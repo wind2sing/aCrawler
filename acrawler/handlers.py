@@ -12,7 +12,7 @@ from acrawler.http import Request
 from acrawler.utils import check_import
 import asyncio
 from aiohttp import ClientSession, TCPConnector
-
+from aiohttp import DummyCookieJar
 # Typing
 import acrawler
 from typing import List, Callable
@@ -32,8 +32,15 @@ class RequestPrepareSession(Handler):
     family = 'Request'
 
     async def on_start(self):
+        self.disable_cookies = self.crawler.config.get(
+            'DISABLE_COOKIES', False)
+
         self.connector = TCPConnector(limit=None)
-        self.session = ClientSession(connector=self.connector)
+        if self.disable_cookies:
+            self.session = self.session = ClientSession(
+                connector=self.connector, cookie_jar=DummyCookieJar())
+        else:
+            self.session = ClientSession(connector=self.connector)
         self.crawler._session = self.session
 
     async def handle_before(self, task):
