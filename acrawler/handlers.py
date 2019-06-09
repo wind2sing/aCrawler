@@ -222,13 +222,15 @@ class ItemToMongo(Handler):
         self.db = self.client[self.db_name]
         self.col = self.db[self.col_name]
         logger.info(f'Connecting to MongoDB... {self.col}')
+        if self.primary_key:
+            await self.col.create_index(self.primary_key)
 
     async def handle_after(self, item):
         if self.primary_key:
-            await self.col.update_one({self.primary_key: item[self.primary_key]},
-                                      {'$set': item.content},
-                                      upsert=True
-                                      )
+            await self.col.update_many({self.primary_key: item[self.primary_key]},
+                                       {'$set': item.content},
+                                       upsert=True
+                                       )
         else:
             await self.col.insert_one(item.content)
 
@@ -287,6 +289,7 @@ class CrawlerStartAddon(Handler):
                     task = Request(url,
                                    callback=self.crawler.parse)
                     await self.crawler.add_task(task)
+                    await asyncio.sleep(0)
                 else:
                     await asyncio.sleep(0.5)
 
