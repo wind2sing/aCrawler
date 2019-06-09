@@ -311,10 +311,10 @@ class Crawler(object):
             else:
                 added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         elif isinstance(new_task, dict):
-            item = DefaultItem(extra=new_task)
+            new_task = DefaultItem(extra=new_task)
             if ancestor:
-                item.ancestor = ancestor
-            added = await self.sdl.produce(item, dont_filter=dont_filter)
+                new_task.ancestor = ancestor
+            added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         if added:
             await self.counter.task_add(new_task)
             return new_task
@@ -460,6 +460,16 @@ class Crawler(object):
         try:
             logger.info(
                 'Start shutdown. May take some time to finish Non-Request Task...')
+
+            # for tasker in self.taskers['Others']:
+            #     tasker.cancel()
+
+            # for tasker in self.taskers['Others']:
+            #     try:
+            #         await tasker
+            #     except asyncio.CancelledError:
+            #         pass
+
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 
@@ -475,13 +485,6 @@ class Crawler(object):
                 except asyncio.CancelledError:
                     pass
 
-            # for tasker in self.taskers['Others']:
-            #     tasker.cancel()
-            # for tasker in self.taskers['Others']:
-            #     try:
-            #         await tasker
-            #     except asyncio.CancelledError:
-            #         pass
             await self._log_status()
             await self._on_close()
             await self._persist_save()
