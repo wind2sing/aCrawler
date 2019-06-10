@@ -196,53 +196,58 @@ class RedisPQ(BaseQueue):
         self.address = address
         self.pq_key = q_key + ':pq'
         self.waiting_key = q_key + ':waiting'
-        self.redis = None
+        self.redis: 'aioredis.Redis' = None
 
     async def start(self):
         aioredis = check_import('aioredis')
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def push(self, task: _Task):
+        """Push a task directly to the waiting queue.
+        """
         return await self.redis.zadd(self.waiting_key,
                                      task.exetime,
                                      self.serialize(task))
 
     async def push_to_pq(self, task: _Task):
+        """Push a task directly to the priority queue.
+        """
         return await self.redis.zadd(self.pq_key,
                                      -task.score,
                                      self.serialize(task))
 
     async def pop(self):
+        """Pop a task from priority queue. Blocking if empty.
+        """
         await self.transfer_waiting()
         while True:
             tr = self.redis.multi_exec()
             tr.zrange(self.pq_key, 0, 0)
             tr.zremrangebyrank(self.pq_key, 0, 0)
-            eles, count = await tr.execute()
+            eles, _ = await tr.execute()
 
             if eles:
                 return self.deserialize(eles[0])
             else:
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
                 await self.transfer_waiting()
 
     async def transfer_waiting(self):
+        """Transfer the tasks that are permitted by exetime from waiting queue
+        to priority queue
+        """
         now = time.time()
-        while True:
-            tr = self.redis.multi_exec()
-            tr.zrange(self.waiting_key, 0, 0)
-            tr.zremrangebyrank(self.waiting_key, 0, 0)
-            eles, count = await tr.execute()
-
-            if eles:
-                task = self.deserialize(eles[0])
-                if task.exetime <= now:
-                    await self.push_to_pq(task)
-                else:
-                    await self.push(task)
-                    break
-            else:
-                break
+        tr = self.redis.multi_exec()
+        tr.zrangebyscore(self.waiting_key, max=now)
+        tr.zremrangebyscore(self.waiting_key, max=now)
+        eles, _ = await tr.execute()
+        if eles:
+            for ele in eles:
+                task = self.deserialize(ele)
+                await self.push_to_pq(task)
+        else:
+            # waiting queue is empty
+            pass
 
     async def clear(self):
         await self.redis.delete(self.pq_key)
@@ -305,6 +310,12 @@ class Scheduler:
     async def consume(self) -> _Task:
         task = await self.q.pop()
         return task
+
+    async def clear(self, df=True, q=True):
+        if df:
+            await self.df.clear()
+        if q:
+            await self.q.clear()
 
     async def close(self):
         await self.df.close()
