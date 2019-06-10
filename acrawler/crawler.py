@@ -457,22 +457,23 @@ class Crawler(object):
         # - wait for all nonRequest workers
         # - deal with keyboardinterrupt.
         # - save current status if persistent
+
+        logger.info(
+            'Start shutdown. May take some time to finish Non-Request Task...')
         try:
-            logger.info(
-                'Start shutdown. May take some time to finish Non-Request Task...')
+            for tasker in self.taskers['Others']:
+                tasker.cancel()
 
-            # for tasker in self.taskers['Others']:
-            #     tasker.cancel()
-
-            # for tasker in self.taskers['Others']:
-            #     try:
-            #         await tasker
-            #     except asyncio.CancelledError:
-            #         pass
+            for tasker in self.taskers['Others']:
+                try:
+                    await tasker
+                except asyncio.CancelledError:
+                    pass
 
             for tasker in self.taskers['Request']:
                 tasker.cancel()
 
+            # wait for nonreq workers to finish
             while 1:
                 nonreq_count = await self.sdl.q.get_length_of_pq()
                 if nonreq_count == 0:

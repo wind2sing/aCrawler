@@ -145,6 +145,13 @@ See `examples <examples/>`_.
 Todo
 ----
 
+* Correct default fingerprint function
+* Add delta_key support
+* Enhance item handlers
+* Cralwer's name to distinguish
+* Command Line config support
+* Enhance Counter for better monitoring
+* Promethues monitor as command
 * Monitor all your crawlers
 * Write detailed Documentation
 * Write testing code
