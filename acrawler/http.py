@@ -254,10 +254,7 @@ class Response(Task):
     @property
     def json(self):
         if self._json is None:
-            try:
-                self._json = json.loads(self.body)
-            except JSONDecodeError as e:
-                logger.error('JSONDecodeError for {}: {}'.format(self, e))
+            self._json = json.loads(self.body)
         return self._json
 
     @property
