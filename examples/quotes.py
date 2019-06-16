@@ -1,6 +1,6 @@
 # Scrape quotes from http://quotes.toscrape.com/
 from acrawler import Parser, Crawler, Processors, ParselItem, get_logger, Request
-
+import asyncio
 logger = get_logger('quotes')
 
 
@@ -9,7 +9,7 @@ def get_twenty_words(value):
 
 
 class QuoteItem(ParselItem):
-    # log = True
+    log = True
     default_rules = {'type': 'quote'}
     css_rules_first = {'author': 'small.author::text'}
     xpath_rules_first = {'text': './/span[@class="text"]/text()'}
@@ -28,10 +28,15 @@ class AuthorItem(ParselItem):
 class QuoteCrawler(Crawler):
 
     config = {'LOG_LEVEL': 'DEBUG',
-              'MAX_REQUESTS': 4
+              'MAX_REQUESTS': 8,
+              'MAX_REQUESTS_PER_HOST': 8,
+              #   'PERSISTENT': True,
               }
 
-    start_urls = ['http://quotes.toscrape.com/page/1/', ]
+    start_urls = ['http://quotes.toscrape.com/page/1/',
+                  'http://quotes.toscrape.com/page/3/',
+                  'http://quotes.toscrape.com/page/5/',
+                  'http://quotes.toscrape.com/page/7/']
 
     main_page = r'quotes.toscrape.com/page/\d+'
     author_page = r'quotes.toscrape.com/author/.*'

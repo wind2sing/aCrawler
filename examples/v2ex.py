@@ -1,12 +1,14 @@
 from acrawler import Crawler, Request, callback, register, ReScheduleError
 
+
 class V2EXCrawler(Crawler):
-    K=1
+    K = 1
 
     def start_requests(self):
         yield Request('https://www.v2ex.com/?tab=hot',
                       family='v2ex',  # Optional
                       callback=None,  # Optional
+                      recrawl=10
                       )
 
     def parse(self, response):
@@ -21,11 +23,10 @@ class V2EXCrawler(Crawler):
                 'title': a.css('::text').get()
             }
             yield d
-            if self.K==1:
-                self.K=0
+            if self.K == 1:
+                self.K = 0
                 print('Reschedule...')
                 raise ReScheduleError(defer=5)
-
 
 
 @register('DefaultItem')
