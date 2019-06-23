@@ -1,7 +1,7 @@
 from multidict import CIMultiDictProxy
 from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
 from acrawler.task import Task
-from acrawler.utils import to_asyncgen
+from acrawler.utils import to_asyncgen, make_text_links_absolute
 import asyncio
 import aiohttp
 import aiofiles
@@ -69,6 +69,7 @@ class Request(Task):
                  request_config: dict = None,
                  status_allowed: list = None,
                  encoding=None,
+                 links_to_abs=False,
 
                  # Below are paras for parent class
                  dont_filter: bool = False,
@@ -102,6 +103,7 @@ class Request(Task):
         self.response: Response = None
         self.httpfamily = family
         self.encoding = encoding
+        self.links_to_abs = links_to_abs
 
     @property
     def url_str(self):
@@ -151,6 +153,7 @@ class Request(Task):
                                          history=cresp.history,
                                          body=body,
                                          encoding=encoding,
+                                         links_to_abs=self.links_to_abs,
                                          callbacks=self.callbacks,
                                          request=self,
                                          request_info=cresp.request_info,
@@ -211,6 +214,7 @@ class Response(Task):
                  request_info,
                  body: bytes,
                  encoding: str,
+                 links_to_abs: bool = False,
                  callbacks: _Functions = None,
                  meta: dict = None,
                  **kwargs
@@ -229,6 +233,7 @@ class Response(Task):
         self.history = history
         self.body = body
         self.encoding = encoding
+        self.links_to_abs = links_to_abs
         self.meta = meta
         self.request = request
         self.request_info = request_info
@@ -237,19 +242,34 @@ class Response(Task):
             (self.request.status_allowed) and (self.status in self.request.status_allowed))
         self.bind_cbs = False
 
-        self._text = None
+        self._text_raw = None
+        self._text_absolute = None
         self._json = None
         self._sel: Selector = None
 
     @property
     def text(self):
-        if self._text is None:
+        if self.links_to_abs:
+            return self.text_absolute
+        else:
+            return self.text_raw
+
+    @property
+    def text_raw(self):
+        if self._text_raw is None:
             try:
-                self._text = self.body.decode(self.encoding)
+                self._text_raw = self.body.decode(self.encoding)
             except Exception as e:
                 logger.debug('({}) {}'.format(self.url_str, e))
-                self._text = self.body.decode(self.encoding, 'ignore')
-        return self._text
+                self._text_raw = self.body.decode(self.encoding, 'ignore')
+        return self._text_raw
+
+    @property
+    def text_absolute(self):
+        if self._text_absolute is None:
+            self._text_absolute = make_text_links_absolute(
+                self.text_raw, self.url_str)
+        return self._text_absolute
 
     @property
     def json(self):

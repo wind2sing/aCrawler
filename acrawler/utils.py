@@ -5,10 +5,12 @@ Some are used for external consumption.
 """
 
 import sys
+import re
 import asyncio
 import logging
 import webbrowser
 from functools import partial
+from urllib.parse import urljoin
 from importlib import import_module
 from pathlib import Path
 from inspect import isasyncgenfunction, isgeneratorfunction, \
@@ -79,6 +81,23 @@ def open_html(html, path=None):
     webbrowser.open(url)
 
 
+LINK_PATTERN = re.compile(r"<(.*?)(src|href)=\"(.*?)\"(.*?)>")
+
+
+def _srcrepl(match, base_url):
+    href = match.group(3)
+    new_url = href
+    if href and not href.startswith('#') and not href.startswith(('javascript:', 'mailto:')):
+        new_url = urljoin(base_url, href)
+
+    return "<" + match.group(1) + match.group(2) + "=" + "\"" + new_url + "\"" + match.group(4) + ">"
+
+
+def make_text_links_absolute(text, base_url):
+    updated_text = LINK_PATTERN.sub(partial(_srcrepl, base_url=base_url), text)
+    return updated_text
+
+
 def get_logger(name: str = 'user'):
     """Get a logger which has the same configuration as crawler's logger.
     """
@@ -95,7 +114,7 @@ def redis_push_start_urls(key: str, url: str = None, address: str = 'redis://loc
 
 
 async def redis_push_start_urls_coro(key: str, url: str = None, address: str = 'redis://localhost'):
-    """Coroutine version of :func:`resid_push_start_urls`
+    """Coroutine version of :func:`redis_push_start_urls`
     """
     aioredis = import_module('aioredis')
     redis = await aioredis.create_redis_pool(address)
