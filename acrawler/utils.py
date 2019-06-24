@@ -81,16 +81,16 @@ def open_html(html, path=None):
     webbrowser.open(url)
 
 
-LINK_PATTERN = re.compile(r"<(.*?)(src|href)=\"(.*?)\"(.*?)>")
+LINK_PATTERN = re.compile(r"<(.*?)(src|href)=(\"|')(.*?)(\"|')(.*?)>")
 
 
 def _srcrepl(match, base_url):
-    href = match.group(3)
+    href = match.group(4)
     new_url = href
     if href and not href.startswith('#') and not href.startswith(('javascript:', 'mailto:')):
         new_url = urljoin(base_url, href)
 
-    return "<" + match.group(1) + match.group(2) + "=" + "\"" + new_url + "\"" + match.group(4) + ">"
+    return "<" + match.group(1) + match.group(2) + "=" + match.group(3) + new_url + match.group(5) + match.group(6) + ">"
 
 
 def make_text_links_absolute(text, base_url):
