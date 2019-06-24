@@ -14,6 +14,7 @@ import traceback
 import logging
 from yarl import URL
 from parsel import Selector, SelectorList
+from pyquery import PyQuery
 from aiohttp import ClientResponse
 from inspect import isasyncgenfunction, isgeneratorfunction, \
     isfunction, iscoroutinefunction, ismethod, signature
@@ -193,6 +194,7 @@ class Response(Task):
         url: url as yarl URL
         url_str: url as str
         sel: a ``Selector``. See `Parsel <https://parsel.readthedocs.io/en/latest/>`_ for parsing rules.
+        doc: a ``PyQuery`` object.
         meta: a dictionary to deliver information. It comes from :attr:`Request.meta`.
         ok: True if `status==200` or status is allowed from :attr:`Request.status_allowed`
         cookies: HTTP cookies of response (Set-Cookie HTTP header).
@@ -246,6 +248,7 @@ class Response(Task):
         self._text_absolute = None
         self._json = None
         self._sel: Selector = None
+        self._pq: PyQuery = None
 
     @property
     def text(self):
@@ -285,6 +288,27 @@ class Response(Task):
             except Exception as e:
                 logger.error(e)
         return self._sel
+
+    @property
+    def pq(self):
+        if self._pq is None:
+            self._pq = PyQuery(self.text)
+        return self._pq
+
+    def update_sel(self, source=None):
+        """ Update response's Selector.
+
+        Args:
+            source: can be a string or a PyQuery object.
+                if it's None, use `self.pq` as source by default.
+
+        """
+        if source is None:
+            source = self.pq
+        if isinstance(source, PyQuery):
+            self._sel = Selector(source.html())
+        elif isinstance(source, str):
+            self._sel = Selector(source)
 
     @property
     def url_str(self):
