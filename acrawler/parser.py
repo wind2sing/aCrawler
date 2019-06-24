@@ -30,15 +30,14 @@ class Parser:
 
     css_divider: str = None
 
-    def _selectors_loader(self, html):
+    def _selectors_loader(self, selector):
         """You may have many pieces in one response. Yield them in different selectors."""
 
-        main_sel = Selector(html)
         if self.css_divider:
-            for sel in main_sel.css(self.css_divider):
+            for sel in selector.css(self.css_divider):
                 yield sel
         else:
-            yield main_sel
+            yield selector
 
     def __init__(self,
                  in_pattern: _RE = '',
@@ -46,13 +45,15 @@ class Parser:
                  selectors_loader: _Function = None,
                  css_divider: str = None,
                  item_type: ParselItem = None,
-                 extra: dict = None):
+                 extra: dict = None,
+                 add_meta: bool = False):
 
         self.in_pattern = in_pattern
         self.follow_patterns = follow_patterns
 
         self.item_type = item_type
         self.extra = extra
+        self.add_meta = add_meta
 
         self.css_divider = css_divider
         self.selectors_loader = selectors_loader or self._selectors_loader
@@ -91,10 +92,15 @@ class Parser:
     def parse_items(self, response):
         """Get items from all selectors in the loader."""
 
-        for sel in self.selectors_loader(response.text):
+        for sel in self.selectors_loader(response.sel):
             if self.item_type:
                 if issubclass(self.item_type, ParselItem):
-                    yield self.item_type(sel, extra=self.extra)
+                    extra = {}
+                    if self.extra:
+                        extra.update(self.extra)
+                    if self.add_meta and response.meta:
+                        extra.update(response.meta)
+                    yield self.item_type(sel, extra=extra)
                 else:
                     logger.warning(
                         f"Parser'item_type should be a subclass of <ParselItem>, {self.item_type}found!")
