@@ -1,22 +1,25 @@
-import traceback
-from acrawler.middleware import Handler, middleware
-from acrawler.counter import RedisCounter
-import importlib
-import sys
+import asyncio
 import functools
+import importlib
 import inspect
 import json
-import pickle
 import logging
-from acrawler.http import Request
-from acrawler.utils import check_import
-import asyncio
-from aiohttp import ClientSession, TCPConnector
-from aiohttp import DummyCookieJar
-# Typing
-import acrawler
-from typing import List, Callable
+import pickle
+import sys
+import traceback
+from typing import Callable, List
 
+from aiohttp import ClientSession, DummyCookieJar, TCPConnector
+
+
+import acrawler
+from acrawler.counter import RedisCounter
+from acrawler.exceptions import ResponseStatusError
+from acrawler.http import Request
+from acrawler.middleware import Handler, middleware
+from acrawler.utils import check_import
+
+# typing
 _Function = Callable
 _Task = 'acrawler.task.Task'
 _Request = 'acrawler.http.Request'
@@ -72,31 +75,26 @@ class RequestPrepareBrowser(Handler):
 class ResponseCheckStatus(Handler):
     """a handler check response's status and will retry the request if it failed.
 
-    If the response is not allowed by crawler and by request's parameters, it will be considered as failing and then retried.
+    If the response is not allowed by crawler AND by request's parameters, it will be considered as failing and then retried.
     By default, any response with status rather than 200 will fail.
     """
-    family = 'Response'
+    family = 'Request'
 
     def on_start(self):
         self.status_allowed = self.crawler.config.get('STATUS_ALLOWED', None)
         self.allow_all = (self.status_allowed == [])
         self.deny_all = self.status_allowed is None
 
-    async def handle_before(self, response):
-        if self.allow_all:
-            return
-        if response.status != 200:
-            if self.deny_all or not response.status in self.status_allowed:
-                if not response.ok:
-                    task = response.request
-                    if task.tries < self.crawler.max_tries:
-                        await self.crawler.add_task(response.request, dont_filter=True)
-                        logger.warning(
-                            'Retry the task {}'.format(response.request))
-                    else:
-                        pass
-                        # logger.warning(
-                        # 'Drop the task {}'.format(response.request))
+    async def handle_after(self, request: Request):
+        if request.response:
+            status = request.response.status
+            ok_by_crawler = self.allow_all or status == 200 or (
+                not self.deny_all and status in self.status_allowed)
+
+            if ok_by_crawler and request.response.ok:
+                pass
+            else:
+                raise ResponseStatusError(status)
 
 
 class RequestMergeConfig(Handler):

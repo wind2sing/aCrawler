@@ -240,8 +240,6 @@ class Response(Task):
         self.request = request
         self.request_info = request_info
         self.callbacks = callbacks
-        self.ok = (self.status == 200) or (self.request.status_allowed == []) or (
-            (self.request.status_allowed) and (self.status in self.request.status_allowed))
         self.bind_cbs = False
 
         self._text_raw = None
@@ -249,6 +247,13 @@ class Response(Task):
         self._json = None
         self._sel: Selector = None
         self._pq: PyQuery = None
+
+    @property
+    def ok(self) -> bool:
+        """ If the response is allowed by the config of request.
+        """
+        return (self.status == 200) or (self.request.status_allowed == []) or (
+            (self.request.status_allowed) and (self.status in self.request.status_allowed))
 
     @property
     def text(self):

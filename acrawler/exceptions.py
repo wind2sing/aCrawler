@@ -13,3 +13,15 @@ class ReScheduleError(Exception):
         self.defer = defer
         self.recrawl = recrawl
         super().__init__(*args, **kwargs)
+
+
+class ResponseStatusError(Exception):
+    """ Indicate that the Request failed with incorrect Response's status.
+    """
+
+    def __init__(self, status: int, *args, **kwargs):
+        self.status = status
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return f'<{self.status}>'

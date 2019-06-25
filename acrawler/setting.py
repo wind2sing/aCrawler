@@ -32,6 +32,9 @@ LOG_LEVEL = 'INFO'
 LOG_TO_FILE: str = None
 """redirect log to a filepath"""
 
+LOG_TIME_DELTA: int = 30
+"""how many seconds to log a new crawling statistics."""
+
 STATUS_ALLOWED = None
 """A list of intergers representing status codes other than 200."""
 

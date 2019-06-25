@@ -59,9 +59,12 @@ class Worker:
     async def work(self):
         try:
             while True:
+                retry = False
+                exception = False
+
                 self.current_task = await self.sdl.consume()
                 task = self.current_task
-                exception = False
+
                 try:
                     if self.is_req:
                         self.crawler.counter.require_req(task)
@@ -83,27 +86,23 @@ class Worker:
                     await asyncio.sleep(0.5)
                     continue
                 except Exception as e:
-                    logger.error(
-                        '{} -> {}:{}'.format(task, e.__class__, e))
-                    logger.error(traceback.format_exc())
                     exception = True
+                    if not task.ignore_exception and task.tries < self._max_tries:
+                        await self.crawler.add_task(task, dont_filter=True)
+                        retry = True
+                        logger.error(
+                            '{}->Retry...\n{}'.format(task, traceback.format_exc(chain=False)))
+                        await self.crawler.counter.task_done(task, -1)
+                    else:
+                        logger.error(
+                            '{}->Drop!\n{}'.format(task, traceback.format_exc(chain=False)))
+                        await self.crawler.counter.task_done(task, 0)
+
+                if not exception:
+                    await self.crawler.counter.task_done(task, 1)
 
                 if self.is_req:
                     self.crawler.counter.release_req(task)
-
-                retry = False
-                if exception:
-                    if not task.ignore_exception and task.tries < self._max_tries:
-                        logger.warning(
-                            '{} failed. Retry...'.format(task))
-                        await self.crawler.add_task(task, dont_filter=True)
-                        retry = True
-                        await self.crawler.counter.task_done(task, -1)
-                    else:
-                        logger.warning('Drop the {}'.format(task))
-                        await self.crawler.counter.task_done(task, 0)
-                else:
-                    await self.crawler.counter.task_done(task, 1)
 
                 if task.recrawl > 0 and not retry:
                     task.tries = 0
@@ -236,6 +235,7 @@ class Crawler(object):
     async def manager(self):
         """Create multiple workers to execute tasks.
         """
+        self.initial_counts = (await self.counter.get_counts_dict()).copy()
         logger.info('Normal  Scheduler tasks init -> queue:{} waiting:{}'.format(
             await self.sdl.q.get_length_of_pq(),
             await self.sdl.q.get_length_of_waiting()))
@@ -287,7 +287,7 @@ class Crawler(object):
     async def web_add_task_query(self, query: dict = None):
         """ This method is to deal with web requests if you enable the web service. New tasks should be 
         yielded in this method. And Crawler will finish tasks to send response. Should be overwritten.
-        
+
         Args:
             query: a multidict.
         """
@@ -368,7 +368,8 @@ class Crawler(object):
         else:
             handler = logging.StreamHandler()
         formatter = logging.Formatter(
-            "%(asctime)s %(name)-20s %(levelname)-8s %(message)s")
+            fmt="%(asctime)s %(name)-20s%(levelname)-8s %(message)s",
+            datefmt='%Y-%m-%d %H:%M:%S')
         handler.setFormatter(formatter)
 
         LOGGER.addHandler(handler)
@@ -478,7 +479,7 @@ class Crawler(object):
             for tasker in self.taskers['Others']:
                 try:
                     await tasker
-                except asyncio.CancelledError:
+                except Exception:
                     pass
 
             for tasker in self.taskers['Request']:
@@ -560,8 +561,9 @@ class Crawler(object):
                 pickle.dump(self.sdl_req.df, f)
 
     async def _log_status_timer(self):
+        delta = self.config['LOG_TIME_DELTA']
         while True:
-            await asyncio.sleep(20)
+            await asyncio.sleep(delta)
             await self._log_status()
 
     async def _log_status(self):
@@ -571,8 +573,11 @@ class Crawler(object):
         for family in counts_dict.keys():
             success = counts_dict[family][1]
             failure = counts_dict[family][0]
+            speed = int(
+                (success - self.initial_counts.get(family, (0, 0))[1])/30)*60
             logger.info(
-                f'Statistic:{family:<15} ~ success {success}, failure {failure}')
+                f'Statistic: {family:<13} ~ success {success:<5}, fail {failure:<4} ~ {speed}/min in the past 30s')
+        self.initial_counts = counts_dict.copy()
         logger.info('Normal  Scheduler tasks left, queue:{} waiting:{}'.format(
             await self.sdl.q.get_length_of_pq(),
             await self.sdl.q.get_length_of_waiting()))
