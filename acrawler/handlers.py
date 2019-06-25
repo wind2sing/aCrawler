@@ -7,6 +7,7 @@ import logging
 import pickle
 import sys
 import traceback
+from random import randint
 from typing import Callable, List
 
 from aiohttp import ClientSession, DummyCookieJar, TCPConnector
@@ -91,7 +92,7 @@ class ResponseCheckStatus(Handler):
             ok_by_crawler = self.allow_all or status == 200 or (
                 not self.deny_all and status in self.status_allowed)
 
-            if ok_by_crawler and request.response.ok:
+            if ok_by_crawler or request.response.ok:
                 pass
             else:
                 raise ResponseStatusError(status)
@@ -114,8 +115,14 @@ class RequestMergeConfig(Handler):
 class RequestDelay(Handler):
     family = 'Request'
 
+    def on_start(self):
+        self.delay = self.crawler.config.get('DOWNLOAD_DELAY')
+        self.conf = self.crawler.config.get('DOWNLOAD_DELAY_SPECIAL_HOST')
+
     async def handle_before(self, request: _Request):
-        await asyncio.sleep(self.crawler.config.get('DOWNLOAD_DELAY'))
+        target = self.conf.get(request.url.host, None) or self.delay
+        delay = randint(int(target * 8), (target * 12)) / 10
+        await asyncio.sleep(delay)
 
 
 # Response Part

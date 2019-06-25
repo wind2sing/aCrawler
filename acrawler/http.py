@@ -113,7 +113,7 @@ class Request(Task):
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
             for f in func:
-                self.callbacks.append(func)
+                self.callbacks.append(f)
         else:
             self.callbacks.append(func)
 
