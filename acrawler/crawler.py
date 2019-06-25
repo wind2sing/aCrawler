@@ -285,6 +285,12 @@ class Crawler(object):
         yield None
 
     async def web_add_task_query(self, query: dict = None):
+        """ This method is to deal with web requests if you enable the web service. New tasks should be 
+        yielded in this method. And Crawler will finish tasks to send response. Should be overwritten.
+        
+        Args:
+            query: a multidict.
+        """
         url = query.pop('url', '')
         if url:
             task = Request(url=url, **query)
@@ -292,6 +298,11 @@ class Crawler(object):
         else:
             raise Exception('Not valid url from web request!')
         yield None
+
+    async def web_action_after_query(self):
+        """ Action to be done after the web service finish the query and tasks. Should be overwritten.
+        """
+        pass
 
     async def add_task(self, new_task: 'acrawler.task.Task', dont_filter=False, ancestor=None) -> bool:
         """ Interface to add new Task to schedulers.

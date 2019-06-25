@@ -25,9 +25,9 @@ async def runweb(crawler: Crawler = None):
                 await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
 
             await crawler.counter.join_by_ancestor_unfinished(ancestor)
-
             items = crawler.web_items.pop(ancestor, [])
             if items:
+                await crawler.web_action_after_query(items)
                 res = {'error': None}
                 res['items'] = items
                 return web.json_response(res)
