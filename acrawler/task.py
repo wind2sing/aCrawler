@@ -117,20 +117,45 @@ class Task:
         self.tries += 1
         self.exceptions = []
 
-        for handler in self.middleware.handlers:
-            await handler.handle(position=1, task=self)
+        # for handler in self.middleware.handlers:
+        #     await handler.handle(position=1, task=self)
 
-        async for task in self._execute(**kwargs):
-            if isinstance(task, Exception):
-                self.exceptions.append(task)
-            else:
+        # async for task in self._execute(**kwargs):
+        #     if isinstance(task, Exception):
+        #         if 'Immediately' in task.__class__.__name__:
+        #             raise task
+        #         self.exceptions.append(task)
+        #     else:
+        #         yield task
+
+        # for handler in self.middleware.handlers:
+        #     await handler.handle(position=2, task=self)
+
+        for handler in self.middleware.handlers:
+            async for task in self._sandbox(handler.handle, position=1, task=self):
                 yield task
 
+        async for task in self._sandbox(self._execute, **kwargs):
+            yield task
+
         for handler in self.middleware.handlers:
-            await handler.handle(position=2, task=self)
+
+            async for task in self._sandbox(handler.handle, position=2, task=self):
+                yield task
 
         for exception in self.exceptions:
             raise exception
+
+    async def _sandbox(self, func, *args, **kwargs) -> _TaskGenerator:
+        """Wrap to the async generator and catch the exceptions during work."""
+        try:
+            async for task in to_asyncgen(func, *args, **kwargs):
+                yield task
+        except Exception as e:
+            if 'Immediately' in e.__class__.__name__:
+                raise e
+            else:
+                self.exceptions.append(e)
 
     async def _execute(self, **kwargs: Any) -> _TaskGenerator:
         """should be rewritten as a generator in the subclass."""
@@ -176,11 +201,18 @@ class SpecialTask(Task):
                       **kwargs: Any) -> None:
         self.exetime = time.time()
         self.tries += 1
+        self.exceptions = []
 
         for handler in self.middleware.handlers:
-            await handler.handle(position=1, task=self)
+            async for _ in self._sandbox(handler.handle, position=1, task=self):
+                pass
 
-        await self._execute(**kwargs)
+        async for _ in self._sandbox(self._execute, **kwargs):
+            pass
 
         for handler in self.middleware.handlers:
-            await handler.handle(position=2, task=self)
+            async for _ in self._sandbox(handler.handle, position=2, task=self):
+                pass
+
+        for exception in self.exceptions:
+            raise exception

@@ -1,20 +1,20 @@
+import bisect
+import functools
+import logging
 import types
 from collections import UserList
-import bisect
 from inspect import iscoroutinefunction
-import logging
-import functools
+from typing import AsyncGenerator, Callable, List
 
-# Typing
 import acrawler
-from typing import List, Callable
+from acrawler.utils import to_asyncgen
 
 _Function = Callable
 _Task = 'acrawler.task.Task'
 _Request = 'acrawler.http.Request'
 _Response = 'acrawler.http.Response'
 _Crawler = 'acrawler.crawler.Crawler'
-
+_TaskGenerator = AsyncGenerator['Task', None]
 logger = logging.getLogger(__name__)
 
 
@@ -64,7 +64,6 @@ class Handler(metaclass=HandlerMetaClass):
             self.family = family
 
         self.funcs = [None] * 4
-        self.is_coro = [True] * 4
         self.set_func(0, self.on_start)
         self.set_func(1, self.handle_before)
         self.set_func(2, self.handle_after)
@@ -100,24 +99,23 @@ class Handler(metaclass=HandlerMetaClass):
         """
         pass
 
-    async def handle(self, position: int, task: _Task = None):
+    async def handle(self, position: int, task: _Task = None) -> _TaskGenerator:
         if position == 0 or position == 3:
-            await self._call_func(position)
+            async for task in self._call_func(position):
+                yield task
         elif position == 1 or position == 2:
             if self.family in task.families:
-                await self._call_func(position, task)
+                async for task in self._call_func(position, task):
+                    yield task
 
     def set_func(self, position: int, func):
         if func:
             self.funcs[position] = func
-            self.is_coro[position] = iscoroutinefunction(func)
 
-    async def _call_func(self, position, *args, **kwargs):
+    async def _call_func(self, position, *args, **kwargs) -> _TaskGenerator:
         func = self.funcs[position]
-        if self.is_coro[position]:
-            await func(*args, **kwargs)
-        else:
-            func(*args, **kwargs)
+        async for task in to_asyncgen(func, *args, **kwargs):
+            yield task
 
     def __lt__(self, other):
         return self.priority > other.priority

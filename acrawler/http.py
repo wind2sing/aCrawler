@@ -164,7 +164,7 @@ class Request(Task):
                 logger.info(rt)
                 yield rt
         except Exception as e:
-            yield e
+            raise e
         finally:
             if to_close:
                 await self.session.close()
@@ -438,7 +438,7 @@ class BrowserRequest(Request):
             async for task in to_asyncgen(self.page_callback, self.page, resp):
                 yield task
         except Exception as e:
-            yield e
+            raise e
         finally:
             await self.client.cookies_manager.update_from_pyppeteer(self.page)
             await self.page.close()

@@ -7,19 +7,20 @@ import sys
 import time
 import traceback
 from collections import defaultdict
+from copy import deepcopy
 from importlib import import_module
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from pprint import pformat
-# typing
+
 from typing import Any, Dict, List
 
 from async_timeout import timeout
 
 import acrawler
 import acrawler.setting as DEFAULT_SETTING
-from acrawler.exceptions import ReScheduleError, SkipTaskError
 from acrawler.counter import Counter
+from acrawler.exceptions import ReScheduleError, SkipTaskError
 from acrawler.http import Request
 from acrawler.item import DefaultItem
 from acrawler.middleware import middleware
@@ -235,7 +236,7 @@ class Crawler(object):
     async def manager(self):
         """Create multiple workers to execute tasks.
         """
-        self.initial_counts = (await self.counter.get_counts_dict()).copy()
+        self.initial_counts = deepcopy(await self.counter.get_counts_dict())
         logger.info('Normal  Scheduler tasks init -> queue:{} waiting:{}'.format(
             await self.sdl.q.get_length_of_pq(),
             await self.sdl.q.get_length_of_waiting()))
@@ -452,7 +453,8 @@ class Crawler(object):
             await sdl.start()
         logger.info("Call on_start()...")
         for handler in self.middleware.handlers:
-            await handler.handle(0)
+            async for task in handler.handle(0):
+                await self.add_task(task)
 
     async def _on_close(self):
         # call handlers's on_close()
@@ -460,7 +462,8 @@ class Crawler(object):
             await sdl.close()
         logger.info("Call on_close()...")
         for handler in self.middleware.handlers:
-            await handler.handle(3)
+            async for task in handler.handle(3):
+                await self.add_task(task)
 
     async def ashutdown(self, signal=None):
         # shutdown method.
@@ -577,7 +580,7 @@ class Crawler(object):
                 (success - self.initial_counts.get(family, (0, 0))[1])/30)*60
             logger.info(
                 f'Statistic: {family:<13} ~ success {success:<5}, fail {failure:<4} ~ {speed}/min in the past 30s')
-        self.initial_counts = counts_dict.copy()
+        self.initial_counts = deepcopy(counts_dict)
         logger.info('Normal  Scheduler tasks left, queue:{} waiting:{}'.format(
             await self.sdl.q.get_length_of_pq(),
             await self.sdl.q.get_length_of_waiting()))
