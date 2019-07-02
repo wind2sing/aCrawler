@@ -126,6 +126,8 @@ class Request(Task):
         """
         fp = hashlib.sha1()
         fp.update(self.url_str.encode())
+        # fp.update(to_bytes(request.method))
+        # fp.update(to_bytes(canonicalize_url(request.url)))
         return fp.hexdigest()
 
     async def _execute(self, **kwargs):
@@ -155,7 +157,7 @@ class Request(Task):
                                          body=body,
                                          encoding=encoding,
                                          links_to_abs=self.links_to_abs,
-                                         callbacks=self.callbacks,
+                                         callbacks=self.callbacks.copy(),
                                          request=self,
                                          request_info=cresp.request_info,
                                          meta=self.meta,

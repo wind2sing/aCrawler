@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.8](https://github.com/wooddance/aCrawler/compare/v0.0.7...v0.0.8) (2019-07-02)
+
+
+### Bug Fixes
+
+* **crawler:** add dict new_task ([039ff93](https://github.com/wooddance/aCrawler/commit/039ff93))
+* **crawler:** simplify logging ([c5bf20a](https://github.com/wooddance/aCrawler/commit/c5bf20a))
+* **examples:** update wh-crawler for new site ([cdfafe3](https://github.com/wooddance/aCrawler/commit/cdfafe3))
+* **handlers:** tomongo supports index ([d0051c1](https://github.com/wooddance/aCrawler/commit/d0051c1))
+* **http:** BrowserRequest's exception catching ([5049a3e](https://github.com/wooddance/aCrawler/commit/5049a3e))
+* **http:** correct absolut links ([ed66892](https://github.com/wooddance/aCrawler/commit/ed66892))
+* **http:** not catching json error anymore ([06086a1](https://github.com/wooddance/aCrawler/commit/06086a1))
+* **scheduler:** transfer waiting queue using zrangebyscore ([af3574d](https://github.com/wooddance/aCrawler/commit/af3574d))
+
+
+### Features
+
+* **crawler:** now task can be yielded from handler ([b235261](https://github.com/wooddance/aCrawler/commit/b235261))
+* **examples:** crawl pythonclock.org (javascript) ([17334ca](https://github.com/wooddance/aCrawler/commit/17334ca))
+* **http:** add PyQuery support ([4137cbf](https://github.com/wooddance/aCrawler/commit/4137cbf))
+* **http:** implement BrowserRequest ([58aa947](https://github.com/wooddance/aCrawler/commit/58aa947)), closes [#9](https://github.com/wooddance/aCrawler/issues/9)
+* **http:** special delay and random delay ([76eae8f](https://github.com/wooddance/aCrawler/commit/76eae8f))
+* **http:** support absolute links ([d34f08e](https://github.com/wooddance/aCrawler/commit/d34f08e))
+* **http:** support DISABLE_COOKIES ([0123526](https://github.com/wooddance/aCrawler/commit/0123526))
+* **parser:** support add_meta ([dca8505](https://github.com/wooddance/aCrawler/commit/dca8505))
+* **web:** implement web_action_after_query ([2481e8d](https://github.com/wooddance/aCrawler/commit/2481e8d))
+
+
+
 ### [0.0.7](https://github.com/pansenlin30/aCrawler/compare/v0.0.6...v0.0.7) (2019-06-04)
 
 

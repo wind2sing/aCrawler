@@ -13,6 +13,7 @@ aiohttp = "*"
 parsel = "*"
 aiofiles = "*"
 cchardet = "*"
+pyquery = "*"
 
 [requires]
 python_version = "3.6"

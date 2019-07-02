@@ -5,14 +5,15 @@ NAME = 'acrawler'
 DESCRIPTION = 'A simple web-crawling framework, based on aiohttp.'
 URL = 'https://github.com/pansenlin30/aCrawler'
 EMAIL = 'zireael.me@gmail.com'
-AUTHOR = 'Pan Senlin'
-VERSION = '0.0.7'
+AUTHOR = 'wooddance'
+VERSION = '0.0.8'
 
 packages = ['acrawler']
 requires = [
     'aiohttp',
     'aiofiles',
     'parsel',
+    'pyquery',
     'cchardet'
 ]
 setup(
