@@ -83,6 +83,8 @@ class Worker:
                         task.recrawl = e.recrawl
                     await self.crawler.counter.task_done(task, -1)
                     await self.crawler.add_task(task, dont_filter=True)
+                    if self.is_req:
+                        self.crawler.counter.release_req(task)
                     self.current_task = None
                     await asyncio.sleep(0.5)
                     continue
