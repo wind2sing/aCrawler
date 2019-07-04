@@ -81,6 +81,12 @@ Handlers
 .. autoclass:: acrawler.handlers.ResponseAddCallback
     :members:
 
+.. autoclass:: acrawler.handlers.ExpiredWatcher
+    :members:
+
+.. autoclass:: acrawler.handlers.ItemToMongo
+    :members:
+
 Setting/Config
 ***************
 

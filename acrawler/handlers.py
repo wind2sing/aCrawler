@@ -7,6 +7,7 @@ import logging
 import pickle
 import sys
 import traceback
+import time
 from random import randint
 from typing import Callable, List
 
@@ -74,7 +75,7 @@ class RequestPrepareBrowser(Handler):
 
 
 class ResponseCheckStatus(Handler):
-    """a handler check response's status and will retry the request if it failed.
+    """check response's status and will retry the request if it failed.
 
     If the response is not allowed by crawler AND by request's parameters, it will be considered as failing and then retried.
     By default, any response with status rather than 200 will fail.
@@ -99,7 +100,7 @@ class ResponseCheckStatus(Handler):
 
 
 class RequestMergeConfig(Handler):
-    """a handler (before execution) which merge `config` to :attr:`Request.request_config`."""
+    """(before execution) merge `config` to :attr:`Request.request_config`."""
     family = 'Request'
 
     def handle_before(self, request: _Request):
@@ -128,7 +129,7 @@ class RequestDelay(Handler):
 # Response Part
 
 class ResponseAddCallback(Handler):
-    """a handler (before execution) which add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
+    """(before execution) add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
 
     family = 'Response'
     callback_table = {}
@@ -301,3 +302,47 @@ class CrawlerStartAddon(Handler):
     async def on_close(self):
         if self.do_web:
             await self.web_runner.cleanup()
+
+
+class ExpiredWatcher(Handler):
+    """Maintain a expired Event.
+
+    You can set this event and then meth`custom_expired_worker` will be waken up to do
+    bypassing work. You should overwrite meth`custom_on_start` if needed rather than
+    default one.
+
+    Args:
+        expired: a Event to tell the worker that your token is expired.
+        last_handle_time: a timestamp when the last work happened.
+        ttl: if `set` signal is sent at a time that less than `last_handle_time` + `ttl`,
+            it will be ignored.
+    """
+
+    expired = asyncio.Event()
+    last_handle_time = None
+    ttl: int = 20
+
+    async def on_start(self):
+        self.crawler.create_task(self.expired_worker())
+        await self.custom_on_start()
+
+    async def custom_on_start(self):
+        pass
+
+    async def expired_worker(self):
+        while True:
+            await self.expired.wait()
+
+            if (self.last_handle_time and time.time() - self.last_handle_time <= self.ttl):
+                self.expired.clear()
+                continue
+
+            logger.warning("Token is expired. Try to handle...")
+            await asyncio.sleep(0)
+            await self.custom_expired_worker()
+            self.last_handle_time = time.time()
+            logger.warning("Hanling down, clear the Event 'expired'.")
+            self.expired.clear()
+
+    async def custom_expired_worker(self):
+        pass
