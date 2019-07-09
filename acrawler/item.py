@@ -109,10 +109,11 @@ class Processors(object):
     @staticmethod
     def strip(value):
         if isinstance(value, list):
-            value = [str.strip(v) for v in value]
+            return [Processors.strip(v) for v in value]
+        elif isinstance(value, dict):
+            return {k: Processors.strip(v) for k, v in value.items()}
         elif value:
-            value = str.strip(value)
-        return value
+            return str.strip(value)
 
     @staticmethod
     def drop_false(values):
@@ -229,7 +230,7 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
-    default_processors = []
+    default_processors = [Processors.strip]
     field_processors = {}
 
     def __init__(
