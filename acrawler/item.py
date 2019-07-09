@@ -1,4 +1,5 @@
 import logging
+import re
 from collections import MutableMapping, Iterable
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
@@ -100,24 +101,60 @@ class Processors(object):
     """
 
     @staticmethod
-    def get_first(values):
-        if values:
+    def first(values):
+        """ get the first element from the values
+        """
+        if len(values) > 0:
             return values[0]
         else:
             return None
 
     @staticmethod
     def strip(value):
+        """ strip every string in values
+        """
         if isinstance(value, list):
             return [Processors.strip(v) for v in value]
         elif isinstance(value, dict):
             return {k: Processors.strip(v) for k, v in value.items()}
-        elif value:
+        elif isinstance(value, str):
             return str.strip(value)
+        else:
+            return value
 
     @staticmethod
     def drop_false(values):
         return not bool(values)
+
+    @staticmethod
+    def map(func):
+        """ apply function to every item of filed's values list
+        """
+
+        def _f(values):
+            return [func(v) for v in values]
+
+        return _f
+
+    @staticmethod
+    def filter(func):
+        """ pick from those elements of the values list for which function returns true
+        """
+
+        def _f(values):
+            return [v for v in values if func(v)]
+
+        return _f
+
+    @staticmethod
+    def re(regex, group_index=0):
+        def _f(value):
+            match = re.search(regex, value)
+            if match:
+                return match.groups(group_index)
+            return None
+
+        return _f
 
 
 class Field:
@@ -125,16 +162,20 @@ class Field:
         self.value = default
         self._rules = []
 
-    def css(self, rule: str, first=True):
+    def css(self, rule: str):
         self._rules.append(("css", rule))
         return self
 
-    def xpath(self, rule: str, first=True):
+    def xpath(self, rule: str):
         self._rules.append(("xpath", rule))
         return self
 
-    def re(self, rule: str, first=True):
+    def re(self, rule: str):
         self._rules.append(("re", rule))
+        return self
+
+    def re_first(self, rule: str):
+        self._rules.append(("re_first", rule))
         return self
 
     def get(self):
@@ -199,7 +240,7 @@ class ParselItem(Item):
     The selector will process item's fields with these rules.
     Finally, it will call processors to process each field.
 
-    Args: 
+    Args:
         selector: Parsel's selector
         default_rules: default value for item field
         field_processors:  functions to process item field after scraping by rules
