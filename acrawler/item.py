@@ -1,5 +1,5 @@
 import logging
-import collections
+from collections import MutableMapping, Iterable
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
 from parsel import Selector
@@ -7,13 +7,14 @@ from inspect import isfunction, iscoroutinefunction, ismethod, isgeneratorfuncti
 
 # Typing
 from typing import Union, Optional, Any, AsyncGenerator, Callable, Dict, List
+
 _Function = Callable
 _TaskGenerator = AsyncGenerator[Task, None]
 
 logger = logging.getLogger(__name__)
 
 
-class Item(Task, collections.MutableMapping):
+class Item(Task, MutableMapping):
     """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping 
     so it provide a dictionary interface. Also you can use `Item.content` to directly access content.
 
@@ -21,16 +22,14 @@ class Item(Task, collections.MutableMapping):
         extra: During initialing, :attr:`content` will be updated from extra at first.
         content: Item stores information in the `content`, which is a dictionary.
     """
+
     log = False
 
-    def __init__(self, extra: dict = None, **kwargs
-                 ):
-        dont_filter = kwargs.pop('dont_filter', True)
-        ignore_exception = kwargs.pop('ignore_exception', True)
+    def __init__(self, extra: dict = None, **kwargs):
+        dont_filter = kwargs.pop("dont_filter", True)
+        ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
-            dont_filter=dont_filter,
-            ignore_exception=ignore_exception,
-            **kwargs
+            dont_filter=dont_filter, ignore_exception=ignore_exception, **kwargs
         )
         self.extra = extra or {}
 
@@ -86,7 +85,7 @@ class Item(Task, collections.MutableMapping):
         pass
 
     def __str__(self):
-        return "<%s> (%s)" % ('Task Item', self.__class__.__name__)
+        return "<%s> (%s)" % ("Task Item", self.__class__.__name__)
 
 
 class DefaultItem(Item):
@@ -117,7 +116,79 @@ class Processors(object):
 
     @staticmethod
     def drop_false(values):
-        return [v for v in values if v]
+        return not bool(values)
+
+
+class Field:
+    def __init__(self, default=None):
+        self.value = default
+        self._rules = []
+
+    def css(self, rule: str, first=True):
+        self._rules.append(("css", rule))
+        return self
+
+    def xpath(self, rule: str, first=True):
+        self._rules.append(("xpath", rule))
+        return self
+
+    def re(self, rule: str, first=True):
+        self._rules.append(("re", rule))
+        return self
+
+    def get(self):
+        self._rules.append(("get", None))
+        return self
+
+    def getall(self):
+        self._rules.append(("getall", None))
+        return self
+
+    def filter(self, func):
+        self._rules.append(("filter", func))
+        return self
+
+    def map(self, func):
+        self._rules.append(("map", func))
+        return self
+
+    def process(self, func):
+        self._rules.append(("process", func))
+        return self
+
+    def drop(self, func=Processors.drop_false):
+        self._rules.append(("drop", func))
+        return self
+
+    def first(self):
+        self._rules.append(("first", None))
+        return self
+
+    def parse(self, sel: Selector):
+        target = sel
+        for rkey, rule in self._rules:
+            if rkey == "filter":
+                target = [t for t in target if rule(t)]
+            elif rkey == "map":
+                target = [rule(t) for t in target]
+            elif rkey == "process":
+                target = rule(target)
+            elif rkey == "drop":
+                if rule(target):
+                    return False
+            elif rkey == "first":
+                if len(target) > 0:
+                    target = target[0]
+                else:
+                    target = None
+            else:
+                # call parsel to parse
+                if rule is None:
+                    target = getattr(target, rkey)()
+                else:
+                    target = getattr(target, rkey)(rule)
+        self.value = target
+        return True
 
 
 class ParselItem(Item):
@@ -158,20 +229,23 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
-    default_processors = [Processors.strip]
+    default_processors = []
     field_processors = {}
 
-    def __init__(self, selector,
-                 css_rules=None,
-                 xpath_rules=None,
-                 re_rules=None,
-                 css_rules_first=None,
-                 xpath_rules_first=None,
-                 re_rules_first=None,
-                 default_rules=None,
-                 field_processors=None,
-                 extra=None,
-                 **kwargs):
+    def __init__(
+        self,
+        selector,
+        css_rules=None,
+        xpath_rules=None,
+        re_rules=None,
+        css_rules_first=None,
+        xpath_rules_first=None,
+        re_rules_first=None,
+        default_rules=None,
+        field_processors=None,
+        extra=None,
+        **kwargs,
+    ):
         super().__init__(extra=extra, **kwargs)
         self.sel = selector
 
@@ -221,6 +295,12 @@ class ParselItem(Item):
 
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
+
+        for key, field in self.__class__.__dict__.items():
+            if isinstance(field, Field):
+                res = field.parse(self.sel)
+                if res:
+                    item.update({key: field.value})
 
         self.content.update(self.process(item))
         return self.content

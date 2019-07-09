@@ -1,6 +1,6 @@
 from .crawler import Crawler
 from .parser import Parser
-from .item import Item, ParselItem, Processors
+from .item import Item, Field, ParselItem, Processors
 from .http import Request, Response, FileRequest
 from .middleware import middleware, Handler, register
 from .handlers import callback
