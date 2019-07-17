@@ -1,7 +1,7 @@
 from multidict import CIMultiDictProxy
 from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
 from acrawler.task import Task
-from acrawler.utils import to_asyncgen, make_text_links_absolute
+from acrawler.utils import to_asyncgen, make_text_links_absolute, open_html
 import asyncio
 import aiohttp
 import aiofiles
@@ -16,16 +16,22 @@ from yarl import URL
 from parsel import Selector, SelectorList
 from pyquery import PyQuery
 from aiohttp import ClientResponse
-from inspect import isasyncgenfunction, isgeneratorfunction, \
-    isfunction, iscoroutinefunction, ismethod, signature
+from inspect import (
+    isasyncgenfunction,
+    isgeneratorfunction,
+    isfunction,
+    iscoroutinefunction,
+    ismethod,
+    signature,
+)
 
 # Typing
 
 
 _Function = Callable
 _Functions = Union[_Function, List[_Function]]
-_History = List['aiohttp.ClientResponse']
-_TaskGenerator = AsyncGenerator['Task', None]
+_History = List["aiohttp.ClientResponse"]
+_TaskGenerator = AsyncGenerator["Task", None]
 _LooseURL = Union[URL, str]
 
 logger = logging.getLogger(__name__)
@@ -64,33 +70,35 @@ class Request(Task):
 
     """
 
-    def __init__(self, url: _LooseURL,
-                 callback: _Functions = None,
-                 method: str = 'GET',
-                 request_config: dict = None,
-                 status_allowed: list = None,
-                 encoding=None,
-                 links_to_abs=False,
-
-                 # Below are paras for parent class
-                 dont_filter: bool = False,
-                 ignore_exception: bool = False,
-                 meta: dict = None,
-                 priority: int = 0,
-                 family=None,
-                 recrawl=0,
-                 exetime=0,
-                 **kwargs
-                 ):
-        super().__init__(dont_filter=dont_filter,
-                         ignore_exception=ignore_exception,
-                         priority=priority,
-                         meta=meta,
-                         family=family,
-                         recrawl=recrawl,
-                         exetime=exetime,
-                         **kwargs
-                         )
+    def __init__(
+        self,
+        url: _LooseURL,
+        callback: _Functions = None,
+        method: str = "GET",
+        request_config: dict = None,
+        status_allowed: list = None,
+        encoding=None,
+        links_to_abs=False,
+        # Below are paras for parent class
+        dont_filter: bool = False,
+        ignore_exception: bool = False,
+        meta: dict = None,
+        priority: int = 0,
+        family=None,
+        recrawl=0,
+        exetime=0,
+        **kwargs
+    ):
+        super().__init__(
+            dont_filter=dont_filter,
+            ignore_exception=ignore_exception,
+            priority=priority,
+            meta=meta,
+            family=family,
+            recrawl=recrawl,
+            exetime=exetime,
+            **kwargs
+        )
 
         self.url = URL(url)
         self.method = method
@@ -144,24 +152,27 @@ class Request(Task):
             to_close = True
         try:
             async with self.session.request(
-                    self.method, self.url, **self.request_config) as cresp:
+                self.method, self.url, **self.request_config
+            ) as cresp:
 
                 body = await cresp.read()
                 encoding = self.encoding or cresp.get_encoding()
 
-                self.response = Response(url=cresp.url,
-                                         status=cresp.status,
-                                         cookies=cresp.cookies,
-                                         headers=cresp.headers,
-                                         history=cresp.history,
-                                         body=body,
-                                         encoding=encoding,
-                                         links_to_abs=self.links_to_abs,
-                                         callbacks=self.callbacks.copy(),
-                                         request=self,
-                                         request_info=cresp.request_info,
-                                         meta=self.meta,
-                                         family=self.httpfamily)
+                self.response = Response(
+                    url=cresp.url,
+                    status=cresp.status,
+                    cookies=cresp.cookies,
+                    headers=cresp.headers,
+                    history=cresp.history,
+                    body=body,
+                    encoding=encoding,
+                    links_to_abs=self.links_to_abs,
+                    callbacks=self.callbacks.copy(),
+                    request=self,
+                    request_info=cresp.request_info,
+                    meta=self.meta,
+                    family=self.httpfamily,
+                )
                 rt = self.response
                 logger.info(rt)
                 yield rt
@@ -176,16 +187,16 @@ class Request(Task):
 
     def __getstate__(self):
         state = super().__getstate__()
-        state.pop('session', None)
-        state.pop('response', None)
-        state.pop('client', None)
+        state.pop("session", None)
+        state.pop("response", None)
+        state.pop("client", None)
         return state
 
     def __setstate__(self, state):
         super().__setstate__(state)
-        self.__dict__['response'] = None
-        self.__dict__['session'] = None
-        self.__dict__['client'] = None
+        self.__dict__["response"] = None
+        self.__dict__["session"] = None
+        self.__dict__["client"] = None
 
 
 class Response(Task):
@@ -208,27 +219,26 @@ class Response(Task):
         callbacks: list of callback functions
     """
 
-    def __init__(self,
-                 url: URL,
-                 status: int,
-                 cookies: 'http.cookies.SimpleCookie',
-                 headers: CIMultiDictProxy,
-                 history: _History,
-                 request: Request,
-                 request_info,
-                 body: bytes,
-                 encoding: str,
-                 links_to_abs: bool = False,
-                 callbacks: _Functions = None,
-                 meta: dict = None,
-                 **kwargs
-                 ):
-        dont_filter = kwargs.pop('dont_filter', True)
-        ignore_exception = kwargs.pop('ignore_exception', True)
+    def __init__(
+        self,
+        url: URL,
+        status: int,
+        cookies: "http.cookies.SimpleCookie",
+        headers: CIMultiDictProxy,
+        history: _History,
+        request: Request,
+        request_info,
+        body: bytes,
+        encoding: str,
+        links_to_abs: bool = False,
+        callbacks: _Functions = None,
+        meta: dict = None,
+        **kwargs
+    ):
+        dont_filter = kwargs.pop("dont_filter", True)
+        ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
-            dont_filter=dont_filter,
-            ignore_exception=ignore_exception,
-            **kwargs
+            dont_filter=dont_filter, ignore_exception=ignore_exception, **kwargs
         )
         self.url = url
         self.status = status
@@ -254,8 +264,14 @@ class Response(Task):
     def ok(self) -> bool:
         """ If the response is allowed by the config of request.
         """
-        return (self.status == 200) or (self.request.status_allowed == []) or (
-            (self.request.status_allowed) and (self.status in self.request.status_allowed))
+        return (
+            (self.status == 200)
+            or (self.request.status_allowed == [])
+            or (
+                (self.request.status_allowed)
+                and (self.status in self.request.status_allowed)
+            )
+        )
 
     @property
     def text(self):
@@ -270,15 +286,14 @@ class Response(Task):
             try:
                 self._text_raw = self.body.decode(self.encoding)
             except Exception as e:
-                logger.debug('({}) {}'.format(self.url_str, e))
-                self._text_raw = self.body.decode(self.encoding, 'ignore')
+                logger.debug("({}) {}".format(self.url_str, e))
+                self._text_raw = self.body.decode(self.encoding, "ignore")
         return self._text_raw
 
     @property
     def text_absolute(self):
         if self._text_absolute is None:
-            self._text_absolute = make_text_links_absolute(
-                self.text_raw, self.url_str)
+            self._text_absolute = make_text_links_absolute(self.text_raw, self.url_str)
         return self._text_absolute
 
     @property
@@ -321,6 +336,10 @@ class Response(Task):
     def url_str(self):
         return self.url.human_repr()
 
+    def open(self, path=None):
+        """ Open in default browser """
+        open_html(self.text, path=path)
+
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
         for callback in self.callbacks:
@@ -339,10 +358,10 @@ class Response(Task):
                 a = a[0]
         if isinstance(a, str):
             url = a
-        elif isinstance(a, Selector):
-            url = a.attrib['href']
+        elif isinstance(a, Selector) and "href" in a.attrib:
+            url = a.attrib["href"]
         else:
-            raise ValueError('urljoin receive bad argument{}'.format(a))
+            raise ValueError("urljoin receive bad argument{}".format(a))
         return urljoin(self.url_str, url)
 
     def add_callback(self, func: _Function):
@@ -361,9 +380,9 @@ class Response(Task):
 
 async def file_save_callback(response: Response):
     if response.status == 200:
-        where = response.meta['where']
-        async with aiofiles.open(where, 'wb') as f:
-            logger.info('Save file to {}'.format(where))
+        where = response.meta["where"]
+        async with aiofiles.open(where, "wb") as f:
+            logger.info("Save file to {}".format(where))
             await f.write(response.body)
     else:
         pass
@@ -377,35 +396,57 @@ class FileRequest(Request):
     """Directly set the location the location where the file will save.
     """
 
-    file_dir_key = '_fdir'
+    file_dir_key = "_fdir"
     """It will try to call `self.meta.get(file_dir_key)` to get the location where the file will save.
     """
 
-    file_name = ''
+    file_name = ""
     """Directly set the file name. Otherwise name from url will be used as filename.
     """
 
-    file_name_key = '_fname'
+    file_name_key = "_fname"
     """It will try to call `self.meta.get(file_name_key)` to get the file name to save.
     """
 
-    def __init__(self, url, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
+    def __init__(
+        self,
+        url,
+        callback=None,
+        method="GET",
+        request_config=None,
+        dont_filter=False,
+        meta=None,
+        priority=0,
+        family=None,
+        *args,
+        **kwargs
+    ):
         if not callback:
             callback = file_save_callback
 
-        super().__init__(url, callback=callback, method=method, request_config=request_config,
-                         dont_filter=dont_filter, meta=meta, priority=priority, family=family, *args, **kwargs)
+        super().__init__(
+            url,
+            callback=callback,
+            method=method,
+            request_config=request_config,
+            dont_filter=dont_filter,
+            meta=meta,
+            priority=priority,
+            family=family,
+            *args,
+            **kwargs
+        )
 
     async def _execute(self, **kwargs):
         if self.file_dir_key in self.meta:
             self.file_dir = Path(self.meta[self.file_dir_key])
 
-        self.file_name = self.url_str.split('/')[-1]
-        ext = self.file_name.split('.')[-1]
+        self.file_name = self.url_str.split("/")[-1]
+        ext = self.file_name.split(".")[-1]
         if self.file_name_key in self.meta:
-            self.file_name = self.meta[self.file_name_key] + '.' + ext
+            self.file_name = self.meta[self.file_name_key] + "." + ext
 
-        self.meta['where'] = self.file_dir/self.file_name
+        self.meta["where"] = self.file_dir / self.file_name
 
         async for task in super()._execute(**kwargs):
             yield task
@@ -419,9 +460,32 @@ class BrowserRequest(Request):
     function accepts two parameters: `page` and `resposne`.
     """
 
-    def __init__(self, url, page_callback=None, callback=None, method='GET', request_config=None, dont_filter=False, meta=None, priority=0, family=None, *args, **kwargs):
-        super().__init__(url, callback=callback, method=method, request_config=request_config,
-                         dont_filter=dont_filter, meta=meta, priority=priority, family=family, *args, **kwargs)
+    def __init__(
+        self,
+        url,
+        page_callback=None,
+        callback=None,
+        method="GET",
+        request_config=None,
+        dont_filter=False,
+        meta=None,
+        priority=0,
+        family=None,
+        *args,
+        **kwargs
+    ):
+        super().__init__(
+            url,
+            callback=callback,
+            method=method,
+            request_config=request_config,
+            dont_filter=dont_filter,
+            meta=meta,
+            priority=priority,
+            family=family,
+            *args,
+            **kwargs
+        )
         self.page_callback = page_callback
         self.page = None
 
@@ -431,8 +495,9 @@ class BrowserRequest(Request):
             self.page = await self.client.newPage()
             if self.url_str:
                 resp = await self.page.goto(self.url_str)
-                logger.info('<Task BrowserRequest> <{}> ({})'.format(
-                    resp.status, resp.url))
+                logger.info(
+                    "<Task BrowserRequest> <{}> ({})".format(resp.status, resp.url)
+                )
             else:
                 resp = None
             async for task in to_asyncgen(self.operate_page, self.page, resp):
