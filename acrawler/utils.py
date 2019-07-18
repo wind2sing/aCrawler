@@ -103,7 +103,7 @@ def open_html(html, path=None):
     webbrowser.open(url)
 
 
-LINK_PATTERN = re.compile(r"<(.*?)(src|href)=(\"|')(.*?)(\"|')(.*?)>")
+LINK_PATTERN = re.compile(r"<(.*?)(src|href)=(\"|')(.*?)(\"|')(.*?)>", re.S)
 
 
 def _srcrepl(match, base_url):
