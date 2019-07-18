@@ -124,7 +124,9 @@ class Processors(object):
 
     @staticmethod
     def drop_false(values):
-        return not bool(values)
+        if isinstance(values, list):
+            return [v for v in values if v]
+        return values
 
     @staticmethod
     def map(func):
@@ -151,7 +153,7 @@ class Processors(object):
         def _f(value):
             match = re.search(regex, value)
             if match:
-                return match.groups(group_index)
+                return match.group(group_index)
             return None
 
         return _f
@@ -198,7 +200,7 @@ class Field:
         self._rules.append(("process", func))
         return self
 
-    def drop(self, func=Processors.drop_false):
+    def drop(self, func=lambda x: not bool(x)):
         self._rules.append(("drop", func))
         return self
 
@@ -316,7 +318,7 @@ class ParselItem(Item):
 
     def load(self):
         # Main function to return an item.
-        item = {}
+        item = self.content
         for field, default in self.default_rules.items():
             item.update({field: default})
 
@@ -344,7 +346,7 @@ class ParselItem(Item):
                 if res:
                     item.update({key: field.value})
 
-        self.content.update(self.process(item))
+        self.process(item)
         return self.content
 
     def process(self, item):
@@ -360,4 +362,3 @@ class ParselItem(Item):
             else:
                 item[field] = processors(item[field])
 
-        return item

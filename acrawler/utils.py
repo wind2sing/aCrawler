@@ -13,11 +13,18 @@ from functools import partial
 from urllib.parse import urljoin
 from importlib import import_module
 from pathlib import Path
-from inspect import isasyncgenfunction, isgeneratorfunction, \
-    isfunction, iscoroutinefunction, ismethod, isgenerator
+from inspect import (
+    isasyncgenfunction,
+    isgeneratorfunction,
+    isfunction,
+    iscoroutinefunction,
+    ismethod,
+    isgenerator,
+)
 
 # typing
 from typing import Tuple, Dict, Any
+
 _Config = Dict[str, Any]
 
 
@@ -25,10 +32,10 @@ def config_from_setting(module) -> Tuple[_Config, _Config, _Config]:
     # Generate three types of config from `setting.py`.
     context = {}
     for key in dir(module):
-        if not key.startswith('__'):
+        if not key.startswith("__"):
             context[key] = getattr(module, key)
-    request_config = context.pop('REQUEST_CONFIG', {})
-    middleware_config = context.pop('MIDDLEWARE_CONFIG', {})
+    request_config = context.pop("REQUEST_CONFIG", {})
+    middleware_config = context.pop("MIDDLEWARE_CONFIG", {})
     config = context
     return config, request_config, middleware_config
 
@@ -39,6 +46,21 @@ def merge_config(*configs: _Config) -> _Config:
     for config in configs:
         r = {**r, **config}
     return r
+
+
+def merge_dicts(a, b):
+    """Merges b into a"""
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge_dicts(a[key], b[key])
+            elif a[key] == b[key]:
+                pass  # same leaf value
+            else:
+                a[key] = b[key]
+        else:
+            a[key] = b[key]
+    return a
 
 
 async def to_asyncgen(fn, *args, **kwargs):
@@ -57,7 +79,7 @@ async def to_asyncgen(fn, *args, **kwargs):
     elif callable(judge):
         yield fn(*args, **kwargs)
     else:
-        raise TypeError('Callback {} not valid!'.format(fn))
+        raise TypeError("Callback {} not valid!".format(fn))
 
 
 def check_import(name: str):
@@ -74,9 +96,9 @@ def open_html(html, path=None):
     """A helper function to debug your response. Usually called with `open_html(response.text)`.
     """
     if not path:
-        path = Path.home()/'.temp.html'
-    url = 'file://' + str(path)
-    with open(path, 'w') as f:
+        path = Path.home() / ".temp.html"
+    url = "file://" + str(path)
+    with open(path, "w") as f:
         f.write(html)
     webbrowser.open(url)
 
@@ -87,10 +109,24 @@ LINK_PATTERN = re.compile(r"<(.*?)(src|href)=(\"|')(.*?)(\"|')(.*?)>")
 def _srcrepl(match, base_url):
     href = match.group(4)
     new_url = href
-    if href and not href.startswith('#') and not href.startswith(('javascript:', 'mailto:')):
+    if (
+        href
+        and not href.startswith("#")
+        and not href.startswith(("javascript:", "mailto:"))
+    ):
         new_url = urljoin(base_url, href)
 
-    return "<" + match.group(1) + match.group(2) + "=" + match.group(3) + new_url + match.group(5) + match.group(6) + ">"
+    return (
+        "<"
+        + match.group(1)
+        + match.group(2)
+        + "="
+        + match.group(3)
+        + new_url
+        + match.group(5)
+        + match.group(6)
+        + ">"
+    )
 
 
 def make_text_links_absolute(text, base_url):
@@ -98,25 +134,30 @@ def make_text_links_absolute(text, base_url):
     return updated_text
 
 
-def get_logger(name: str = 'user'):
+def get_logger(name: str = "user"):
     """Get a logger which has the same configuration as crawler's logger.
     """
-    if not name.startswith('acrawler.'):
-        name = 'acrawler.'+name
+    if not name.startswith("acrawler."):
+        name = "acrawler." + name
     return logging.getLogger(name)
 
 
-def redis_push_start_urls(key: str, url: str = None, address: str = 'redis://localhost'):
+def redis_push_start_urls(
+    key: str, url: str = None, address: str = "redis://localhost"
+):
     """ When you are using redis_based distributed crawling, you can use this function to feed start_urls to redis. 
     """
     asyncio.get_event_loop().run_until_complete(
-        redis_push_start_urls_coro(key, url, address))
+        redis_push_start_urls_coro(key, url, address)
+    )
 
 
-async def redis_push_start_urls_coro(key: str, url: str = None, address: str = 'redis://localhost'):
+async def redis_push_start_urls_coro(
+    key: str, url: str = None, address: str = "redis://localhost"
+):
     """Coroutine version of :func:`redis_push_start_urls`
     """
-    aioredis = import_module('aioredis')
+    aioredis = import_module("aioredis")
     redis = await aioredis.create_redis_pool(address)
     if isinstance(url, list):
         for u in url:
