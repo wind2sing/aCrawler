@@ -46,6 +46,8 @@ class BaseCounter:
         raise NotImplementedError()
 
     def require_req(self, req):
+        req.chosts = []  # this contains hosts that the request requires
+
         if self.unicheck:
             count = self.uniconf.setdefault(req.url.host, self.uni)
             if count > 0:
@@ -54,7 +56,6 @@ class BaseCounter:
                 raise ReScheduleError()
 
         if self.check:
-            req.chosts = []
             for host in self.hosts:
                 if host in req.url.host:
                     req.chosts.append(host)
