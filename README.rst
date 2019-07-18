@@ -142,10 +142,12 @@ Scrape v2ex.com
    if __name__ == "__main__":
       V2EXCrawler().run()
 
+
 Scrape imdb.com
 ^^^^^^^^^^^^^^^
 
 .. code-block:: python
+
    from acrawler import Crawler, Request, ParselItem, Handler, register, get_logger
 
 
@@ -224,18 +226,18 @@ Scrape imdb.com
    if __name__ == "__main__":
       IMDBCrawler().run()
 
+
 See `examples <examples/>`_.
+
 
 Todo
 ----
 
-* Correct default fingerprint function
-* Add delta_key support
-* Enhance item handlers
-* Cralwer's name to distinguish
+* Fix default fingerprint functions for request
+* Add delta_key support for request
+* Cralwer's name for distinguishing
 * Command Line config support
-* Enhance Counter for better monitoring
 * Promethues monitor as command
-* Monitor all your crawlers
+* Monitor all crawlers in web
 * Write detailed Documentation
 * Write testing code
