@@ -118,6 +118,15 @@ class Request(Task):
     def url_str(self):
         return self.url.human_repr()
 
+    @property
+    def url_str_canonicalized(self):
+        query_str = "&".join(sorted(self.url.raw_query_string.split("&")))
+        return (
+            str(self.url)
+            .replace(self.url.raw_query_string, query_str)
+            .replace("#" + self.url.raw_fragment, "")
+        )
+
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
             for f in func:
@@ -133,15 +142,22 @@ class Request(Task):
         .. todo::write a better hashing function for request.
         """
         fp = hashlib.sha1()
-        fp.update(self.url_str.encode())
-        # fp.update(to_bytes(request.method))
-        # fp.update(to_bytes(canonicalize_url(request.url)))
+        fp.update(self.url_str_canonicalized.encode())
+        fp.update(self.method.encode())
         return fp.hexdigest()
 
     async def _execute(self, **kwargs):
         """Wraps :meth:`fetch`"""
-        async for task in self.fetch():
-            yield task
+        yield await self.fetch()
+
+    async def send(self):
+        """This method is used for independent usage of Request without Crawler.
+        """
+        resp = None
+        async for task in self.execute():
+            if isinstance(task, Response):
+                resp = task
+        return resp
 
     async def fetch(self):
         """Sends a request and return the response as a task."""
@@ -175,7 +191,7 @@ class Request(Task):
                 )
                 rt = self.response
                 logger.info(rt)
-                yield rt
+                return rt
         except Exception as e:
             raise e
         finally:
