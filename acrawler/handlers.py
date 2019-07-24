@@ -245,17 +245,21 @@ class ItemToMongo(Handler):
 
 
 class ItemCollector(Handler):
-    family = 'Item'
+    family = "Item"
 
     async def on_start(self):
         self.do_web = self.crawler.web_enable
         if self.do_web:
             self.crawler.web_items = {}
 
-    async def handle_after(self, task):
-        if self.do_web and task.ancestor.startswith('@web'):
-            li = self.crawler.web_items.setdefault(task.ancestor, [])
-            li.append(task.content)
+    async def handle_after(self, item):
+        if self.do_web and item.ancestor.startswith("@web"):
+            li = self.crawler.web_items.setdefault(item.ancestor, [])
+            li.append(item.content)
+
+        if item.store:
+            li = self.crawler.storage.setdefault(item.primary_family, [])
+            li.append(item)
 
 
 # Others

@@ -25,6 +25,7 @@ class Item(Task, MutableMapping):
     """
 
     log = False
+    store = False
 
     def __init__(self, extra: dict = None, **kwargs):
         dont_filter = kwargs.pop("dont_filter", True)
@@ -46,8 +47,6 @@ class Item(Task, MutableMapping):
     def __getitem__(self, key):
         if key in self.content:
             return self.content[key]
-        if hasattr(self.__class__, "__missing__"):
-            return self.__class__.__missing__(self, key)
         raise KeyError(key)
 
     def __setitem__(self, key, item):
@@ -85,8 +84,8 @@ class Item(Task, MutableMapping):
         """
         pass
 
-    def __str__(self):
-        return "<%s> (%s)" % ("Task Item", self.__class__.__name__)
+    def __repr__(self):
+        return str(self.content)
 
 
 class DefaultItem(Item):
@@ -94,6 +93,8 @@ class DefaultItem(Item):
 
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
+
+    store = True
 
 
 class Processors(object):
@@ -273,7 +274,7 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
-    default_processors = [Processors.strip]
+    default_processors = []
     field_processors = {}
 
     def __init__(
