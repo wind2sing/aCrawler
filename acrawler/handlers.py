@@ -23,10 +23,10 @@ from acrawler.utils import check_import
 
 # typing
 _Function = Callable
-_Task = 'acrawler.task.Task'
-_Request = 'acrawler.http.Request'
-_Response = 'acrawler.http.Response'
-_Crawler = 'acrawler.crawler.Crawler'
+_Task = "acrawler.task.Task"
+_Request = "acrawler.http.Request"
+_Response = "acrawler.http.Response"
+_Crawler = "acrawler.crawler.Crawler"
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +34,16 @@ logger = logging.getLogger(__name__)
 
 
 class RequestPrepareSession(Handler):
-    family = 'Request'
+    family = "Request"
 
     async def on_start(self):
-        self.disable_cookies = self.crawler.config.get(
-            'DISABLE_COOKIES', False)
+        self.disable_cookies = self.crawler.config.get("DISABLE_COOKIES", False)
 
         self.connector = TCPConnector(limit=None)
         if self.disable_cookies:
             self.session = self.session = ClientSession(
-                connector=self.connector, cookie_jar=DummyCookieJar())
+                connector=self.connector, cookie_jar=DummyCookieJar()
+            )
         else:
             self.session = ClientSession(connector=self.connector)
         self.crawler._session = self.session
@@ -56,11 +56,12 @@ class RequestPrepareSession(Handler):
 
 
 class RequestPrepareBrowser(Handler):
-    family = 'BrowserRequest'
+    family = "BrowserRequest"
 
     async def on_start(self):
         from aninja.client import launch
         from aninja.cookies import CookiesManager
+
         self.cookies_manager = CookiesManager()
         self.client = await launch(cookies_manager=self.cookies_manager)
 
@@ -80,18 +81,22 @@ class ResponseCheckStatus(Handler):
     If the response is not allowed by crawler AND by request's parameters, it will be considered as failing and then retried.
     By default, any response with status rather than 200 will fail.
     """
-    family = 'Request'
+
+    family = "Request"
 
     def on_start(self):
-        self.status_allowed = self.crawler.config.get('STATUS_ALLOWED', None)
-        self.allow_all = (self.status_allowed == [])
+        self.status_allowed = self.crawler.config.get("STATUS_ALLOWED", None)
+        self.allow_all = self.status_allowed == []
         self.deny_all = self.status_allowed is None
 
     async def handle_after(self, request: Request):
         if request.response:
             status = request.response.status
-            ok_by_crawler = self.allow_all or status == 200 or (
-                not self.deny_all and status in self.status_allowed)
+            ok_by_crawler = (
+                self.allow_all
+                or status == 200
+                or (not self.deny_all and status in self.status_allowed)
+            )
 
             if ok_by_crawler or request.response.ok:
                 pass
@@ -101,24 +106,27 @@ class ResponseCheckStatus(Handler):
 
 class RequestMergeConfig(Handler):
     """(before execution) merge `config` to :attr:`Request.request_config`."""
-    family = 'Request'
+
+    family = "Request"
 
     def handle_before(self, request: _Request):
-        h0 = self.crawler.request_config.get('headers', {})
-        h1 = request.request_config.get('headers', {})
+        h0 = self.crawler.request_config.get("headers", {})
+        h1 = request.request_config.get("headers", {})
         h = {**h0, **h1}
         request.request_config = {
-            **self.crawler.request_config, **request.request_config}
+            **self.crawler.request_config,
+            **request.request_config,
+        }
         if h:
-            request.request_config['headers'] = h
+            request.request_config["headers"] = h
 
 
 class RequestDelay(Handler):
-    family = 'Request'
+    family = "Request"
 
     def on_start(self):
-        self.delay = self.crawler.config.get('DOWNLOAD_DELAY')
-        self.conf = self.crawler.config.get('DOWNLOAD_DELAY_SPECIAL_HOST')
+        self.delay = self.crawler.config.get("DOWNLOAD_DELAY")
+        self.conf = self.crawler.config.get("DOWNLOAD_DELAY_SPECIAL_HOST")
 
     async def handle_before(self, request: _Request):
         target = self.conf.get(request.url.host, None) or self.delay
@@ -128,10 +136,11 @@ class RequestDelay(Handler):
 
 # Response Part
 
+
 class ResponseAddCallback(Handler):
     """(before execution) add :meth:`Parser.parse` to :attr:`Response.callbacks`."""
 
-    family = 'Response'
+    family = "Response"
     callback_table = {}
 
     def handle_before(self, response: _Response):
@@ -142,14 +151,13 @@ class ResponseAddCallback(Handler):
             if response.primary_family in self.callback_table:
                 for fn in self.callback_table[response.primary_family]:
                     sig = inspect.signature(fn)
-                    if 'self' in sig.parameters:
+                    if "self" in sig.parameters:
                         fn = functools.partial(fn, self.crawler)
                     response.add_callback(fn)
             response.bind_cbs = True
 
     @classmethod
     def callback(cls, family):
-
         def decorator(func):
             li = cls.callback_table.setdefault(family, [])
             li.append(func)
@@ -166,10 +174,10 @@ callback = ResponseAddCallback.callback
 
 
 class ItemToRedis(Handler):
-    family = 'Item'
+    family = "Item"
     """Family of this handler."""
 
-    address: str = 'redis://localhost'
+    address: str = "redis://localhost"
     """
     An address where to connect.
         Can be one of the following:
@@ -185,19 +193,17 @@ class ItemToRedis(Handler):
     """Maximum number of connection to keep in pool.
     """
 
-    items_key = 'acrawler:items'
+    items_key = "acrawler:items"
     """Key of the list at which item's content is inserted.
     """
 
     async def on_start(self):
-        aioredis = check_import('aioredis')
-        self.items_key = self.crawler.config.get(
-            'REDIS_ITEMS_KEY', self.items_key)
+        aioredis = check_import("aioredis")
+        self.items_key = self.crawler.config.get("REDIS_ITEMS_KEY", self.items_key)
         self.redis = await aioredis.create_redis_pool(
-            self.address,
-            maxsize=self.maxsize,
-            loop=self.crawler.loop)
-        logger.info(f'Connecting to Redis... {self.redis}')
+            self.address, maxsize=self.maxsize, loop=self.crawler.loop
+        )
+        logger.info(f"Connecting to Redis... {self.redis}")
 
     async def handle_after(self, item):
         await self.redis.lpush(self.items_key, json.dumps(item.content))
@@ -208,35 +214,36 @@ class ItemToRedis(Handler):
 
 
 class ItemToMongo(Handler):
-    family = 'Item'
+    family = "Item"
     """Family of this handler."""
 
-    address = 'mongodb://localhost:27017'
+    address = "mongodb://localhost:27017"
     """a full mongodb URI, in addition to a simple hostname"""
 
-    db_name = ''
+    db_name = ""
     """name of targeted database"""
 
-    col_name = ''
+    col_name = ""
     """name of targeted collection"""
 
-    primary_key = ''
+    primary_key = ""
 
     async def on_start(self):
-        mo = check_import('motor.motor_asyncio')
+        mo = check_import("motor.motor_asyncio")
         self.client = mo.AsyncIOMotorClient(self.address)
         self.db = self.client[self.db_name]
         self.col = self.db[self.col_name]
-        logger.info(f'Connecting to MongoDB... {self.col}')
+        logger.info(f"Connecting to MongoDB... {self.col}")
         if self.primary_key:
             await self.col.create_index(self.primary_key)
 
     async def handle_after(self, item):
         if self.primary_key:
-            await self.col.update_many({self.primary_key: item[self.primary_key]},
-                                       {'$set': item.content},
-                                       upsert=True
-                                       )
+            await self.col.update_many(
+                {self.primary_key: item[self.primary_key]},
+                {"$set": item.content},
+                upsert=True,
+            )
         else:
             await self.col.insert_one(item.content)
 
@@ -264,8 +271,9 @@ class ItemCollector(Handler):
 
 # Others
 
+
 class CrawlerStartAddon(Handler):
-    family = 'CrawlerStart'
+    family = "CrawlerStart"
 
     async def on_start(self):
         self.redis = None
@@ -273,31 +281,31 @@ class CrawlerStartAddon(Handler):
         self.do_web = self.crawler.web_enable
 
         if self.do_redis:
-            aioredis = check_import('aioredis')
-            self.redis = await aioredis.create_redis_pool(address=self.crawler.config.get('REDIS_ADDRESS'))
+            aioredis = check_import("aioredis")
+            self.redis = await aioredis.create_redis_pool(
+                address=self.crawler.config.get("REDIS_ADDRESS")
+            )
             self.crawler.redis = self.redis
             self.crawler.counter = RedisCounter(self.crawler)
             self.crawler.counter.redis = self.redis
 
         if self.do_web:
-            web = check_import('acrawler.web')
+            web = check_import("acrawler.web")
             self.web_runner = await web.runweb(self.crawler)
 
     async def handle_after(self, task):
         if self.do_redis:
-            self.redis_start_key = self.crawler.config.get('REDIS_START_KEY')
-            self.crawler.create_task(
-                self._next_requests_from_redis_start())
+            self.redis_start_key = self.crawler.config.get("REDIS_START_KEY")
+            self.crawler.create_task(self._next_requests_from_redis_start())
 
     async def _next_requests_from_redis_start(self):
-        start_key = self.crawler.config.get('REDIS_START_KEY')
+        start_key = self.crawler.config.get("REDIS_START_KEY")
         if start_key:
             while True:
                 url = await self.redis.spop(start_key)
                 if url:
                     url = url.decode()
-                    task = Request(url,
-                                   callback=self.crawler.parse)
+                    task = Request(url, callback=self.crawler.parse)
                     await self.crawler.add_task(task)
                     await asyncio.sleep(0)
                 else:
@@ -337,7 +345,10 @@ class ExpiredWatcher(Handler):
         while True:
             await self.expired.wait()
 
-            if (self.last_handle_time and time.time() - self.last_handle_time <= self.ttl):
+            if (
+                self.last_handle_time
+                and time.time() - self.last_handle_time <= self.ttl
+            ):
                 self.expired.clear()
                 continue
 
