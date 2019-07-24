@@ -166,3 +166,8 @@ async def redis_push_start_urls_coro(
         await redis.sadd(key, url)
     redis.close()
     await redis.wait_closed()
+
+
+def sync_coroutine(coro, loop=None):
+    """Run a coroutine in synchronized way."""
+    return (loop or asyncio.get_event_loop()).run_until_complete(coro)
