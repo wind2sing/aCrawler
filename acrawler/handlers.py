@@ -120,11 +120,21 @@ class RequestDelay(Handler):
     family = "Request"
 
     def on_start(self):
-        self.delay = self.crawler.config.get("DOWNLOAD_DELAY")
-        self.conf = self.crawler.config.get("DOWNLOAD_DELAY_SPECIAL_HOST")
+        self.delay = self.crawler.config.get("DOWNLOAD_DELAY", 0)
+        self.conf = self.crawler.config.get("DOWNLOAD_DELAY_SPECIAL_HOST", {}).copy()
+        self.hosts = list(self.conf.keys())
 
     async def handle_before(self, request: _Request):
-        target = self.conf.get(request.url.host, None) or self.delay
+        origin = True
+        target = 0
+        for host in self.hosts:
+            if host in request.url.host:
+                target += self.conf[host]
+                origin = False
+
+        if origin:
+            target = self.delay
+
         delay = randint(int(target * 8), (target * 12)) / 10
         await asyncio.sleep(delay)
 

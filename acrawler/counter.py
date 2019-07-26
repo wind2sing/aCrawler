@@ -4,16 +4,13 @@ from acrawler.exceptions import ReScheduleError
 
 
 class BaseCounter:
-
     def __init__(self, crawler):
         self.crawler = crawler
-
-        self.conf = self.crawler.config.get(
-            'MAX_REQUESTS_SPECIAL_HOST', {}).copy()
+        self.conf = self.crawler.config.get("MAX_REQUESTS_SPECIAL_HOST", {}).copy()
         self.hosts = list(self.conf.keys())
         self.check = len(self.hosts) > 0
 
-        self.uni = self.crawler.config.get('MAX_REQUESTS_PER_HOST', 0)
+        self.uni = self.crawler.config.get("MAX_REQUESTS_PER_HOST", 0)
         self.uniconf = {}
         self.unicheck = self.uni > 0
 
@@ -46,27 +43,29 @@ class BaseCounter:
         raise NotImplementedError()
 
     def require_req(self, req):
-        req.chosts = []  # this contains hosts that the request requires
+        req.chosts = []  # this contains hosts for special check
+        req.cuni = False  # this flags its state for unicheck
 
         if self.unicheck:
             count = self.uniconf.setdefault(req.url.host, self.uni)
             if count > 0:
                 self.uniconf[req.url.host] -= 1
+                req.cuni = True
             else:
                 raise ReScheduleError()
 
         if self.check:
             for host in self.hosts:
                 if host in req.url.host:
-                    req.chosts.append(host)
                     if self.conf[host] > 0:
+                        req.chosts.append(host)
                         self.conf[host] -= 1
                         continue
                     else:
                         raise ReScheduleError()
 
     def release_req(self, req):
-        if self.unicheck:
+        if self.unicheck and req.cuni:
             self.uniconf[req.url.host] += 1
 
         if self.check and req.chosts:
@@ -114,19 +113,19 @@ class Counter(BaseCounter):
         self.ancestor_unfinished[task.ancestor] -= 1
         # if not self.crawler.lock_always:
         if self.unfinished <= 0:
-            raise ValueError('task_done() called too many times')
+            raise ValueError("task_done() called too many times")
         self.unfinished -= 1
         if self.unfinished == 0:
             self._finished.set()
 
     def __getstate__(self):
         state = self.__dict__
-        state.pop('_finished', None)
+        state.pop("_finished", None)
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.__dict__['_finished'] = asyncio.Event()
+        self.__dict__["_finished"] = asyncio.Event()
         if self.unfinished == 0:
             self._finished.set()
         else:
@@ -142,12 +141,12 @@ class RedisCounter(BaseCounter):
         self.redis = None
         cname = crawler.__class__.__name__
         # a redis int
-        self.unfinished_key = 'acrawler:' + cname + ':c:unfinished'
+        self.unfinished_key = "acrawler:" + cname + ":c:unfinished"
         # Redis Sorted Set
-        self.ancestor_unfinished_key = 'acrawler:' + cname + ':c:ancestor_unfinished'
+        self.ancestor_unfinished_key = "acrawler:" + cname + ":c:ancestor_unfinished"
         # Redis Sorted Set
-        self.counts_key_suc = 'acrawler:' + cname + ':c:counts_suc'
-        self.counts_key_fail = 'acrawler:' + cname + ':c:counts_fail'
+        self.counts_key_suc = "acrawler:" + cname + ":c:counts_suc"
+        self.counts_key_fail = "acrawler:" + cname + ":c:counts_fail"
 
         self._finished = asyncio.Event(loop=crawler.loop)
         self._finished.set()
