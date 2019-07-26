@@ -1,24 +1,19 @@
 import asyncio
 import functools
-import importlib
 import inspect
 import json
 import logging
-import pickle
-import sys
-import traceback
 import time
 from random import randint
-from typing import Callable, List
+from typing import Callable
 
 from aiohttp import ClientSession, DummyCookieJar, TCPConnector
 
 
-import acrawler
 from acrawler.counter import RedisCounter
 from acrawler.exceptions import ResponseStatusError
 from acrawler.http import Request
-from acrawler.middleware import Handler, middleware
+from acrawler.middleware import Handler
 from acrawler.utils import check_import
 
 # typing
@@ -46,7 +41,7 @@ class RequestPrepareSession(Handler):
             )
         else:
             self.session = ClientSession(connector=self.connector)
-        self.crawler._session = self.session
+        self.crawler.session = self.session
 
     async def handle_before(self, task):
         task.session = self.session

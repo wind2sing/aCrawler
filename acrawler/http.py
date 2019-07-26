@@ -1,29 +1,19 @@
-from multidict import CIMultiDictProxy
-from typing import Callable, List, Union, AsyncGenerator, Iterable, Set
-from acrawler.task import Task
-from acrawler.utils import to_asyncgen, make_text_links_absolute, open_html
-import asyncio
-import aiohttp
-import aiofiles
 import hashlib
 import json
-from json.decoder import JSONDecodeError
-from urllib.parse import urljoin
-from pathlib import Path
-import traceback
 import logging
-from yarl import URL
-from parsel import Selector, SelectorList
+from pathlib import Path
+from typing import AsyncGenerator, Callable, Iterable, List, Union
+from urllib.parse import urljoin
+
+import aiofiles
+import aiohttp
+from multidict import CIMultiDictProxy
+from parsel import Selector
 from pyquery import PyQuery
-from aiohttp import ClientResponse
-from inspect import (
-    isasyncgenfunction,
-    isgeneratorfunction,
-    isfunction,
-    iscoroutinefunction,
-    ismethod,
-    signature,
-)
+from yarl import URL
+
+from acrawler.task import Task
+from acrawler.utils import make_text_links_absolute, open_html, to_asyncgen
 
 # Typing
 
@@ -42,14 +32,14 @@ class Request(Task):
 
     Attributes:
         url:
-        callback: should be a callable function or a list of functions. 
+        callback: should be a callable function or a list of functions.
             It will be passed to the corresponding response task.
-        family: this family will be appended in families and also passed to corresponding 
+        family: this family will be appended in families and also passed to corresponding
             response task.
-        status_allowed: a list of allowed status integer. Otherwise any response task 
+        status_allowed: a list of allowed status integer. Otherwise any response task
             with `status!=200` will fail and retry.
         meta: a dictionary to deliver information. It will be passed to :attr:`Response.meta`.
-        request_config: a dictionary, will be passed as keyword arguments 
+        request_config: a dictionary, will be passed as keyword arguments
             to :meth:`aiohttp.ClientSession.request`.
 
             acceptable keyword:
@@ -358,9 +348,22 @@ class Response(Task):
 
     async def _execute(self, **kwargs):
         """Calls every callback function to yield new task."""
-        for callback in self.callbacks:
-            async for task in to_asyncgen(callback, self):
-                yield task
+        if self.ok:
+            for callback in self.callbacks:
+                async for task in to_asyncgen(callback, self):
+                    yield task
+        else:
+            yield None
+
+    async def parse(self) -> list:
+        """Parse the response(call all callback funcs) and return the list of yielded results.
+        This method should be used in independent work without Crawler.
+        """
+        rt = []
+        async for task in self.execute():
+            if task:
+                rt.append(task)
+        return rt
 
     def urljoin(self, a) -> str:
         """ Accept a str (can be a relative url) or a Selector that has href attributes.
@@ -472,7 +475,7 @@ class BrowserRequest(Request):
     """A derived Request using `pyppeteer` to crawl pages.
 
     There are two ways to directly deal with `pyppeteer.page.Page`. You can rewrite
-    method :meth:`operate_page` or pass `page_callback` as parameter. Callback 
+    method :meth:`operate_page` or pass `page_callback` as parameter. Callback
     function accepts two parameters: `page` and `resposne`.
     """
 
