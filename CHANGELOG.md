@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.9](https://github.com/wooddance/aCrawler/compare/v0.0.8...v0.0.9) (2019-07-28)
+
+
+### Bug Fixes
+
+* max_requests & download_delay bug ([0681ad9](https://github.com/wooddance/aCrawler/commit/0681ad9))
+* **http:** correct fingerprint for request ([ba2aba1](https://github.com/wooddance/aCrawler/commit/ba2aba1))
+* **utils:** make_links_absolute fix dot_all ([c5ff219](https://github.com/wooddance/aCrawler/commit/c5ff219))
+* bugs ([459bef3](https://github.com/wooddance/aCrawler/commit/459bef3))
+* **exceptions:** reschedule now release req limit ([c648215](https://github.com/wooddance/aCrawler/commit/c648215))
+* **http:** req hosts limits ([ec4593d](https://github.com/wooddance/aCrawler/commit/ec4593d))
+* **item:** default processor strip ([7562bb8](https://github.com/wooddance/aCrawler/commit/7562bb8))
+
+
+### Features
+
+* **handlers:** implement ExpiredWatcher ([3cb2e8d](https://github.com/wooddance/aCrawler/commit/3cb2e8d))
+* **http:** open method for response ([659544a](https://github.com/wooddance/aCrawler/commit/659544a))
+* **item:** add bind meth for processors ([61bc0fa](https://github.com/wooddance/aCrawler/commit/61bc0fa))
+* **item:** add store attr ([023b796](https://github.com/wooddance/aCrawler/commit/023b796))
+* **item:** new Field parsing ([501164f](https://github.com/wooddance/aCrawler/commit/501164f))
+* **item:** processors map & filter ([969762d](https://github.com/wooddance/aCrawler/commit/969762d))
+* **utils:** sync_coroutine ([80853bb](https://github.com/wooddance/aCrawler/commit/80853bb))
+
+
+
 ### [0.0.8](https://github.com/wooddance/aCrawler/compare/v0.0.7...v0.0.8) (2019-07-02)
 
 
