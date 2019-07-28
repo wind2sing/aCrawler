@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Item(Task, MutableMapping):
-    """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping 
+    """Item is a Task that execute :meth:`custom_process` work. Extending from MutableMapping
     so it provide a dictionary interface. Also you can use `Item.content` to directly access content.
 
     Attributes:
@@ -294,6 +294,8 @@ class ParselItem(Item):
         super().__init__(extra=extra, **kwargs)
         self.sel = selector
 
+        if default_rules:
+            self.default_rules = default_rules
         if css_rules_first:
             self.css_rules_first = css_rules_first
         if xpath_rules_first:
@@ -321,7 +323,8 @@ class ParselItem(Item):
         # Main function to return an item.
         item = self.content
         for field, default in self.default_rules.items():
-            item.update({field: default})
+            if field not in self.extra:
+                item.update({field: default})
 
         for field, rule in self.css_rules_first.items():
             item.update({field: self.sel.css(rule).get()})
@@ -363,3 +366,26 @@ class ParselItem(Item):
             else:
                 item[field] = processors(item[field])
 
+    @classmethod
+    def bind(cls, field: str = None, map=False):
+        """ Bind field processor. """
+
+        def decorator(func):
+            nonlocal field
+            nonlocal map
+            if not field:
+                func_name = func.__name__
+                if func_name.startswith("process_"):
+                    field = func_name.replace("process_", "", 1)
+                else:
+                    field = func_name
+            lis = cls.field_processors.setdefault(field, [])
+            if not isinstance(lis, list):
+                lis = [lis]
+            if map:
+                lis.append(Processors.map(func))
+            else:
+                lis.append(func)
+            return func
+
+        return decorator
