@@ -119,7 +119,8 @@ class Worker:
                     task.init_time = time.time()
                     task.exetime = task.last_crawl_time + task.recrawl
                     await self.crawler.add_task(task, dont_filter=True)
-
+                # if not self.is_req:
+                    # print(f'End Current work{self.current_task}')
                 self.current_task = None
         except asyncio.CancelledError as e:
             if self.current_task:
@@ -231,7 +232,7 @@ class Crawler(object):
         try:
             self.config_logger()
             await self._persist_load()
-            logger.info("Checking middleware's handlers...")
+            logger.debug("Checking middleware's handlers...")
             logger.info(self.middleware)
             logger.info("Start crawling...")
             await self._on_start()
@@ -250,13 +251,13 @@ class Crawler(object):
         """
         self.initial_counts = deepcopy(await self.counter.get_counts_dict())
         logger.info(
-            "Normal  Scheduler tasks init -> queue:{} waiting:{}".format(
+            "Normal tasks -> queue:{} waiting:{}".format(
                 await self.sdl.q.get_length_of_pq(),
                 await self.sdl.q.get_length_of_waiting(),
             )
         )
         logger.info(
-            "Request Scheduler tasks init -> queue:{} waiting:{}".format(
+            "Request tasks -> queue:{} waiting:{}".format(
                 await self.sdl_req.q.get_length_of_pq(),
                 await self.sdl_req.q.get_length_of_waiting(),
             )
@@ -274,8 +275,7 @@ class Crawler(object):
                 self.workers.append(
                     Worker(self, self.schedulers["Default"], is_req=False)
                 )
-            logger.info("Create %d request workers", self.max_requests)
-            logger.info("Create %d workers", self.max_workers)
+            logger.info(f"Create {self.max_requests} request workers, {self.max_workers} normal workers", )
             self.start_time = time.time()
             for worker in self.workers:
                 if worker.sdl is self.sdl_req:
@@ -348,6 +348,7 @@ class Crawler(object):
                 new_task.ancestor = ancestor
             added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         if added:
+            # print(f'Add {new_task}')
             await self.counter.task_add(new_task)
             return new_task
         else:
@@ -473,7 +474,7 @@ class Crawler(object):
         # call handlers's on_start()
         for sdl in self.schedulers.values():
             await sdl.start()
-        logger.info("Call on_start()...")
+        logger.debug("Call on_start()...")
         for handler in self.middleware.handlers:
             async for task in handler.handle(0):
                 await self.add_task(task)
@@ -482,7 +483,7 @@ class Crawler(object):
         # call handlers's on_close()
         for sdl in self.schedulers.values():
             await sdl.close()
-        logger.info("Call on_close()...")
+        logger.debug("Call on_close()...")
         for handler in self.middleware.handlers:
             async for task in handler.handle(3):
                 await self.add_task(task)
@@ -528,7 +529,7 @@ class Crawler(object):
             if signal:
                 self.run_task.cancel()
 
-            logger.info("Shutdown crawler gracefully!")
+            logger.debug("Shutdown crawler gracefully!")
             logger.info("End crawling...")
             self.loop.stop()
         except Exception as e:
@@ -640,7 +641,7 @@ class CrawlerStart(SpecialTask):
         self.crawler.create_task(self.crawler.next_requests())
 
     async def _produce_tasks_from_start_requests(self):
-        logger.info("Produce initial tasks...")
+        logger.debug("Produce initial tasks...")
         async for task in to_asyncgen(self.crawler.start_requests):
             if isinstance(task, Request):
                 task.add_callback(self.crawler.parse)

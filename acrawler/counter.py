@@ -103,15 +103,11 @@ class Counter(BaseCounter):
 
     async def unfinished_inc(self, task):
         self.ancestor_unfinished[task.ancestor] += 1
-        # if not self.crawler.lock_always:
-        #     self.unfinished += 1
-        #     self._finished.clear()
         self.unfinished += 1
         self._finished.clear()
 
     async def unfinished_dec(self, task):
         self.ancestor_unfinished[task.ancestor] -= 1
-        # if not self.crawler.lock_always:
         if self.unfinished <= 0:
             raise ValueError("task_done() called too many times")
         self.unfinished -= 1

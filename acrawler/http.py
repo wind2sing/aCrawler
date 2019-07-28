@@ -77,7 +77,7 @@ class Request(Task):
         family=None,
         recrawl=0,
         exetime=0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             dont_filter=dont_filter,
@@ -87,7 +87,7 @@ class Request(Task):
             family=family,
             recrawl=recrawl,
             exetime=exetime,
-            **kwargs
+            **kwargs,
         )
 
         self.url = URL(url)
@@ -239,7 +239,7 @@ class Response(Task):
         links_to_abs: bool = False,
         callbacks: _Functions = None,
         meta: dict = None,
-        **kwargs
+        **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
@@ -438,7 +438,7 @@ class FileRequest(Request):
         priority=0,
         family=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         if not callback:
             callback = file_save_callback
@@ -453,7 +453,7 @@ class FileRequest(Request):
             priority=priority,
             family=family,
             *args,
-            **kwargs
+            **kwargs,
         )
 
     async def _execute(self, **kwargs):
@@ -491,7 +491,7 @@ class BrowserRequest(Request):
         priority=0,
         family=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             url,
@@ -503,7 +503,7 @@ class BrowserRequest(Request):
             priority=priority,
             family=family,
             *args,
-            **kwargs
+            **kwargs,
         )
         self.page_callback = page_callback
         self.page = None
