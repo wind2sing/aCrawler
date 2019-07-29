@@ -10,10 +10,10 @@ import asyncio
 from typing import Union, Optional, Any, AsyncGenerator, Callable, Dict, List
 import acrawler
 
-_Middleware = 'acrawler.middleware._Middleware'
-_Crawler = 'acrawler.crawler.Crawler'
+_Middleware = "acrawler.middleware._Middleware"
+_Crawler = "acrawler.crawler.Crawler"
 _Function = Callable
-_TaskGenerator = AsyncGenerator['Task', None]
+_TaskGenerator = AsyncGenerator["Task", None]
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +35,16 @@ class Task:
         Defaults to `__class__.__name__`.
     """
 
-    def __init__(self,
-                 dont_filter: bool = False,
-                 ignore_exception: bool = False,
-                 priority: int = 0,
-                 meta: dict = None,
-                 family=None,
-                 _middleware=None,
-                 recrawl: int = 0,
-                 exetime=0):
+    def __init__(
+        self,
+        dont_filter: bool = False,
+        ignore_exception: bool = False,
+        priority: int = 0,
+        meta: dict = None,
+        family=None,
+        recrawl: int = 0,
+        exetime=0,
+    ):
 
         self.dont_filter = dont_filter
         self.ignore_exception = ignore_exception
@@ -51,13 +52,13 @@ class Task:
         self.meta = meta or {}
 
         self.families = set(
-            cls.__name__ for cls in self.__class__.mro() if not isabstract(cls))
+            cls.__name__ for cls in self.__class__.mro() if not isabstract(cls)
+        )
         if family:
             self.families.add(family)
         self.primary_family = family or self.__class__.__name__
         self._ancestor = None
 
-        self.middleware = _middleware or middleware
         self.crawler = self.middleware.crawler
 
         #: Every execution increase it by 1. If a task's :attr:`tries` is
@@ -88,7 +89,7 @@ class Task:
         return self._score()
 
     def _score(self):
-        return self.priority*10000000000 - self.exetime
+        return self.priority * 10000000000 - self.exetime
 
     @property
     def fingerprint(self):
@@ -105,8 +106,11 @@ class Task:
     def ancestor(self, value: str):
         self._ancestor = value
 
-    async def execute(self,
-                      **kwargs: Any) -> _TaskGenerator:
+    @property
+    def middleware(self):
+        return middleware
+
+    async def execute(self, **kwargs: Any) -> _TaskGenerator:
         """main entry for a task to start working.
 
         :param middleware: needed to call custom functions before or after executing work.
@@ -152,7 +156,7 @@ class Task:
             async for task in to_asyncgen(func, *args, **kwargs):
                 yield task
         except Exception as e:
-            if 'Immediately' in e.__class__.__name__:
+            if "Immediately" in e.__class__.__name__:
                 raise e
             else:
                 self.exceptions.append(e)
@@ -170,18 +174,18 @@ class Task:
 
     def __getstate__(self):
         state = self.__dict__
-        state.pop('middleware', None)
-        state.pop('crawler', None)
+        state.pop("crawler", None)
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.__dict__['middleware'] = middleware
-        self.__dict__['crawler'] = middleware.crawler
+        self.__dict__["crawler"] = self.middleware.crawler
+
+    def __str__(self):
+        return f"<Task {self.primary_family}>"
 
 
 class DummyTask(Task):
-
     def __init__(self, val, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.val = val
@@ -197,8 +201,8 @@ class DummyTask(Task):
 class SpecialTask(Task):
     """Task that is special and not generate new tasks.
     """
-    async def execute(self,
-                      **kwargs: Any) -> None:
+
+    async def execute(self, **kwargs: Any) -> None:
         self.exetime = time.time()
         self.tries += 1
         self.exceptions = []
