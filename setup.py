@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 NAME = "acrawler"
@@ -8,8 +8,7 @@ EMAIL = "zireael.me@gmail.com"
 AUTHOR = "wooddance"
 VERSION = "0.0.9"
 
-packages = ["acrawler"]
-requires = ["aiohttp", "aiofiles", "parsel", "pyquery", "cchardet"]
+
 setup(
     name=NAME,
     version=VERSION,
@@ -19,6 +18,6 @@ setup(
     author_email=EMAIL,
     url=URL,
     python_requires=">=3.6.0",
-    packages=packages,
-    install_requires=requires,
+    install_requires=open("requirements.txt").read().splitlines(),
+    packages=find_packages(exclude=["tests", "docs"]),
 )

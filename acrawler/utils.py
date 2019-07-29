@@ -82,14 +82,33 @@ async def to_asyncgen(fn, *args, **kwargs):
         raise TypeError("Callback {} not valid!".format(fn))
 
 
-def check_import(name: str):
+class FakeModule:
+    def __init__(self, error):
+        self._error = error
+
+    def __getattribute__(self, name):
+        if name.startswith("__"):
+            return super().__getattribute__(name)
+        else:
+            raise self.__dict__["_error"]
+
+
+def check_import(name: str, allow_import_error=False):
     """Safely import module only if it's not imported
     """
+
     if not name in sys.modules:
-        mod = import_module(name)
-        return mod
+        try:
+            mod = import_module(name)
+        except ImportError as e:
+            if not allow_import_error:
+                raise e
+            else:
+                mod = FakeModule(e)
     else:
-        return sys.modules[name]
+        mod = sys.modules[name]
+
+    return mod
 
 
 def open_html(html, path=None):

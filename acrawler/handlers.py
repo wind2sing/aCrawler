@@ -54,11 +54,14 @@ class RequestPrepareBrowser(Handler):
     family = "BrowserRequest"
 
     async def on_start(self):
-        from aninja.client import launch
-        from aninja.cookies import CookiesManager
+        launch = check_import("aninja.browser").launch
+        CookiesManager = check_import("aninja.cookies").CookiesManager
+        options = self.crawler.config.get("LAUNCH_OPTIONS", {})
 
         self.cookies_manager = CookiesManager()
-        self.client = await launch(cookies_manager=self.cookies_manager)
+        self.client = await launch(
+            cookies_manager=self.cookies_manager, options=options
+        )
 
     async def handle_before(self, req):
         req.client = self.client

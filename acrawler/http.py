@@ -5,17 +5,21 @@ from pathlib import Path
 from typing import AsyncGenerator, Callable, Iterable, List, Union
 from urllib.parse import urljoin
 
-import aiofiles
 import aiohttp
 from multidict import CIMultiDict
 from parsel import Selector
-from pyquery import PyQuery
 from yarl import URL
 
 from acrawler.task import Task
-from acrawler.utils import make_text_links_absolute, open_html, to_asyncgen
+from acrawler.utils import (
+    check_import,
+    make_text_links_absolute,
+    open_html,
+    to_asyncgen,
+)
 
-# Typing
+aiofiles = check_import("aiofiles", allow_import_error=True)
+pyquery = check_import("pyquery", allow_import_error=True)
 
 
 _Function = Callable
@@ -138,7 +142,8 @@ class Request(Task):
 
     async def _execute(self, **kwargs):
         """Wraps :meth:`fetch`"""
-        yield await self.fetch()
+        async for task in self.fetch():
+            yield task
 
     async def send(self):
         """This method is used for independent usage of Request without Crawler.
@@ -179,7 +184,7 @@ class Request(Task):
                 )
                 rt = self.response
                 logger.info(rt)
-                return rt
+                yield rt
         except Exception as e:
             raise e
         finally:
@@ -257,7 +262,7 @@ class Response(Task):
         self._text_absolute = None
         self._json = None
         self._sel: Selector = None
-        self._pq: PyQuery = None
+        self._pq = None
 
     @property
     def ok(self) -> bool:
@@ -313,7 +318,7 @@ class Response(Task):
     @property
     def pq(self):
         if self._pq is None:
-            self._pq = PyQuery(self.text)
+            self._pq = pyquery.PyQuery(self.text)
         return self._pq
 
     def update_sel(self, source=None):
@@ -326,7 +331,7 @@ class Response(Task):
         """
         if source is None:
             source = self.pq
-        if isinstance(source, PyQuery):
+        if isinstance(source, pyquery.PyQuery):
             self._sel = Selector(source.html())
         elif isinstance(source, str):
             self._sel = Selector(source)
@@ -411,7 +416,7 @@ async def file_save_callback(response: Response):
     if response.status == 200:
         where = response.meta["where"]
         async with aiofiles.open(where, "wb") as f:
-            logger.info("Save file to {}".format(where))
+            logger.info(f"Save file to {where}")
             await f.write(response.body)
     else:
         pass
@@ -440,6 +445,7 @@ class FileRequest(Request):
     def __init__(
         self,
         url,
+        *args,
         callback=None,
         method="GET",
         request_config=None,
@@ -447,7 +453,6 @@ class FileRequest(Request):
         meta=None,
         priority=0,
         family=None,
-        *args,
         **kwargs,
     ):
         if not callback:
@@ -492,6 +497,7 @@ class BrowserRequest(Request):
     def __init__(
         self,
         url,
+        *args,
         page_callback=None,
         callback=None,
         method="GET",
@@ -500,7 +506,6 @@ class BrowserRequest(Request):
         meta=None,
         priority=0,
         family=None,
-        *args,
         **kwargs,
     ):
         super().__init__(
@@ -524,9 +529,7 @@ class BrowserRequest(Request):
             self.page = await self.client.newPage()
             if self.url_str:
                 resp = await self.page.goto(self.url_str)
-                logger.info(
-                    "<Task BrowserRequest> <{}> ({})".format(resp.status, resp.url)
-                )
+                logger.info(f"<Task BrowserRequest> <{resp.status}> ({resp.url})")
             else:
                 resp = None
             async for task in to_asyncgen(self.operate_page, self.page, resp):
