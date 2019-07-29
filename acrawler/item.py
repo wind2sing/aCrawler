@@ -84,8 +84,21 @@ class Item(Task, MutableMapping):
         """
         pass
 
-    def __repr__(self):
-        return str(self.content)
+    def __getstate__(self):
+        state = super().__getstate__()
+        sel = state.pop("sel", None)
+        if sel:
+            state["__sel_text"] = sel.get()
+        return state
+
+    def __setstate__(self, state):
+        sel_text = state.pop("__sel_text", None)
+        if sel_text:
+            sel = Selector(sel_text)
+        else:
+            sel = None
+        super().__setstate__(state)
+        self.__dict__["sel"] = sel
 
 
 class DefaultItem(Item):
@@ -93,8 +106,6 @@ class DefaultItem(Item):
 
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
-
-    store = True
 
 
 class Processors(object):
