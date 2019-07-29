@@ -51,10 +51,10 @@ class Worker:
     - catch the result of a task's execution
     """
 
-    def __init__(self, crawler: "Crawler", sdl: Scheduler = None, is_req: bool = False):
+    def __init__(self, crawler: "Crawler", sdl: Scheduler = None, is_req=False):
         self.crawler = crawler
-        self.sdl = sdl or Scheduler()
         self.is_req = is_req
+        self.sdl = sdl or Scheduler()
         self._max_tries = self.crawler.max_tries
         self.current_task = None
 
@@ -119,8 +119,6 @@ class Worker:
                     task.init_time = time.time()
                     task.exetime = task.last_crawl_time + task.recrawl
                     await self.crawler.add_task(task, dont_filter=True)
-                # if not self.is_req:
-                    # print(f'End Current work{self.current_task}')
                 self.current_task = None
         except asyncio.CancelledError as e:
             if self.current_task:
@@ -190,7 +188,7 @@ class Crawler(object):
     def __init__(self):
         """Initialization will:
         - load setting and configs
-        - create schedulers/counter (may load from file)
+        - create scheduler/counter (may load from file)
         - spawn handlers with middleware_config
 
         """
@@ -268,20 +266,15 @@ class Crawler(object):
         try:
             self.loop.create_task(self._log_status_timer())
             for _ in range(self.max_requests):
-                self.workers.append(
-                    Worker(self, self.schedulers["Request"], is_req=True)
-                )
+                self.workers.append(Worker(self, self.sdl_req, is_req=True))
             for _ in range(self.max_workers):
-                self.workers.append(
-                    Worker(self, self.schedulers["Default"], is_req=False)
-                )
-            logger.info(f"Create {self.max_requests} request workers, {self.max_workers} normal workers", )
+                self.workers.append(Worker(self, self.sdl, is_req=False))
+            logger.info(
+                f"Create {self.max_requests} request workers, {self.max_workers} normal workers"
+            )
             self.start_time = time.time()
             for worker in self.workers:
-                if worker.sdl is self.sdl_req:
-                    self.taskers["Request"].append(self.loop.create_task(worker.work()))
-                else:
-                    self.taskers["Default"].append(self.loop.create_task(worker.work()))
+                self.taskers["Default"].append(self.loop.create_task(worker.work()))
 
         except Exception:
             logger.error(traceback.format_exc())
@@ -428,25 +421,26 @@ class Crawler(object):
 
     def _initialize_schedulers(self):
         request_df = None
-        request_q = None
+        request_q1 = None
+        request_q2 = None
         if self.redis_enable:
             request_df = RedisDupefilter(
                 address=self.config.get("REDIS_ADDRESS"),
                 df_key=self.config.get("REDIS_DF_KEY")
                 or "acrawler:" + self.__class__.__name__ + ":df",
             )
-            request_q = RedisPQ(
+            request_q1 = RedisPQ(
                 address=self.config.get("REDIS_ADDRESS"),
-                q_key=self.config.get("REDIS_QUEUE_KEY")
-                or "acrawler:" + self.__class__.__name__ + ":q",
+                q_key=(self.config.get("REDIS_QUEUE_KEY") or ("acrawler:" + self.__class__.__name__)) + ":q1"
+
+            )
+            request_q2 = RedisPQ(
+                address=self.config.get("REDIS_ADDRESS"),
+                q_key=(self.config.get("REDIS_QUEUE_KEY") or("acrawler:" + self.__class__.__name__ )) + ":q2"
             )
 
-        self.schedulers = {
-            "Request": Scheduler(df=request_df, q=request_q),
-            "Default": Scheduler(),
-        }
-        self.sdl = self.schedulers["Default"]
-        self.sdl_req = self.schedulers["Request"]
+        self.sdl_req = Scheduler(df=request_df, q=request_q1)
+        self.sdl = Scheduler(df=request_df, q=request_q2)
 
     def _add_default_middleware_handler_cls(self):
         # append handlers from middleware_config.
@@ -465,14 +459,21 @@ class Crawler(object):
         pass
 
     def create_task(self, coro):
-        task = self.loop.create_task(coro)
+        async def wrapper(awaitable):
+            try:
+                return await awaitable
+            except Exception as e:
+                logger.error(e)
+        task = self.loop.create_task(wrapper(coro))
         self.taskers["Others"].append(task)
         return task
 
+
+
     async def _on_start(self):
         # call handlers's on_start()
-        for sdl in self.schedulers.values():
-            await sdl.start()
+        await self.sdl.start()
+        await self.sdl_req.start()
         logger.debug("Call on_start()...")
         for handler in self.middleware.handlers:
             async for task in handler.handle(0):
@@ -480,8 +481,8 @@ class Crawler(object):
 
     async def _on_close(self):
         # call handlers's on_close()
-        for sdl in self.schedulers.values():
-            await sdl.close()
+        await self.sdl.close()
+        await self.sdl_req.start()
         logger.debug("Call on_close()...")
         for handler in self.middleware.handlers:
             async for task in handler.handle(3):
@@ -506,20 +507,13 @@ class Crawler(object):
                 except Exception:
                     pass
 
-            for tasker in self.taskers["Request"]:
+            for tasker in self.taskers["Default"]:
                 tasker.cancel()
 
-            # wait for nonreq workers to finish
-            while 1:
-                nonreq_count = await self.sdl.q.get_length_of_pq()
-                if nonreq_count == 0:
-                    break
-                await asyncio.sleep(0.5)
-
-            for tasker in self.taskers["Request"]:
+            for tasker in self.taskers["Default"]:
                 try:
                     await tasker
-                except asyncio.CancelledError:
+                except Exception:
                     pass
 
             await self._log_status()
@@ -538,26 +532,44 @@ class Crawler(object):
 
     async def _persist_load(self):
         if self.persistent and not self.redis_enable:
-            tag = self.config.get("PERSISTENT_NAME", None) or self.__class__.__name__
-            fname = "." + tag
-            self.fi_counter: Path = Path.cwd() / ("acrawler" + fname + ".counter")
-            self.fi_tasks: Path = Path.cwd() / ("acrawler" + fname + ".tasks")
-            self.fi_df: Path = Path.cwd() / ("acrawler" + fname + ".df")
+            tag = (
+                self.config.get("PERSISTENT_NAME", None)
+                or ".acrawler." + self.__class__.__name__
+            )
+            fname = tag
+            self.fi_counter: Path = Path.cwd() / (fname + ".counter")
+            self.fi_tasks: Path = Path.cwd() / (fname + ".tasks")
+            self.fi_reqs: Path = Path.cwd() / (fname + ".reqs")
+            self.fi_df: Path = Path.cwd() / (fname + ".df")
+            self.fi_store: Path = Path.cwd() / (fname + ".store")
             if self.fi_counter.exists():
                 with open(self.fi_counter, "rb") as f:
                     self.counter = pickle.load(f)
+
             tasks = []
             if self.fi_tasks.exists():
                 with open(self.fi_tasks, "rb") as f:
                     tasks = pickle.load(f)
                 for t in tasks:
+                    self.sdl.q.push_nowait(t)
+
+            reqs = []
+            if self.fi_reqs.exists():
+                with open(self.fi_reqs, "rb") as f:
+                    reqs = pickle.load(f)
+                for t in reqs:
                     self.sdl_req.q.push_nowait(t)
-            logger.info(
-                "Load {} tasks from local file {}.".format(len(tasks), self.fi_tasks)
-            )
+
+            logger.info(f"Load {len(reqs)} requests from local file.")
+            logger.info(f"Load {len(tasks)} normal tasks from local file.")
+
             if self.fi_df.exists():
                 with open(self.fi_df, "rb") as f:
-                    self.sdl_req.df = pickle.load(f)
+                    self.sdl.df = pickle.load(f)
+
+            if self.fi_store.exists():
+                with open(self.fi_store, "rb") as f:
+                    self.storage = pickle.load(f)
 
     async def _persist_save(self):
         if self.persistent and not self.redis_enable:
@@ -567,23 +579,41 @@ class Crawler(object):
             with open(self.fi_tasks, "wb") as f:
                 while 1:
                     try:
-                        t = self.sdl_req.q.pq.get_nowait()[1]
+                        t = self.sdl.q.pq.get_nowait()[1]
                         tasks.append(t)
                     except asyncio.QueueEmpty:
                         break
                 while 1:
                     try:
-                        t = self.sdl_req.q.waiting.get_nowait()[1]
+                        t = self.sdl.q.waiting.get_nowait()[1]
                         tasks.append(t)
                     except asyncio.QueueEmpty:
                         break
                 pickle.dump(tasks, f)
-            logger.info(
-                "Dump {} tasks into local file {}.".format(len(tasks), self.fi_tasks)
-            )
+
+            reqs = []
+            with open(self.fi_reqs, "wb") as f:
+                while 1:
+                    try:
+                        t = self.sdl_req.q.pq.get_nowait()[1]
+                        reqs.append(t)
+                    except asyncio.QueueEmpty:
+                        break
+                while 1:
+                    try:
+                        t = self.sdl_req.q.waiting.get_nowait()[1]
+                        reqs.append(t)
+                    except asyncio.QueueEmpty:
+                        break
+                pickle.dump(reqs, f)
+            logger.info(f"Dump {len(reqs)} requests into local file.")
+            logger.info(f"Dump {len(tasks)} normal tasks from local file.")
 
             with open(self.fi_df, "wb") as f:
-                pickle.dump(self.sdl_req.df, f)
+                pickle.dump(self.sdl.df, f)
+
+            with open(self.fi_store, "wb") as f:
+                pickle.dump(self.storage, f)
 
     async def _log_status_timer(self):
         delta = self.config["LOG_TIME_DELTA"]
@@ -617,6 +647,7 @@ class Crawler(object):
                 await self.sdl_req.q.get_length_of_waiting(),
             )
         )
+
 
     def __getstate__(self):
         return {}
