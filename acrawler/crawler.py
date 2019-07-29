@@ -82,8 +82,8 @@ class Worker:
                     task.exetime = time.time() + e.defer
                     if e.recrawl:
                         task.recrawl = e.recrawl
-                    await self.crawler.counter.task_done(task, -1)
-                    await self.crawler.add_task(task, dont_filter=True)
+                    await self.crawler.counter.task_done(task, -2)
+                    await self.crawler.add_task(task, dont_filter=True, flag=-2)
                     if self.is_req:
                         self.crawler.counter.release_req(task)
                     self.current_task = None
@@ -324,9 +324,9 @@ class Crawler(object):
         pass
 
     async def add_task(
-        self, new_task: "acrawler.task.Task", dont_filter=False, ancestor=None
+        self, new_task: "acrawler.task.Task", dont_filter=False, ancestor=None, flag=1
     ) -> bool:
-        """ Interface to add new Task to schedulers.
+        """ Interface to add new Task to scheduler.
 
         Args:
             new_task: a Task or a dictionary which will be catched as :class:`~acrawler.item.DefaultItem` task.
@@ -348,8 +348,7 @@ class Crawler(object):
                 new_task.ancestor = ancestor
             added = await self.sdl.produce(new_task, dont_filter=dont_filter)
         if added:
-            # print(f'Add {new_task}')
-            await self.counter.task_add(new_task)
+            await self.counter.task_add(new_task, flag=flag)
             return new_task
         else:
             return False
