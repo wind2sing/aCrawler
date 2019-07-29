@@ -35,12 +35,10 @@ class BaseCounter:
     async def task_add(self, task, flag: int = 1):
         if flag != -2:
             await self.unfinished_inc(task)
-            # print(f"add {task}, lef:{self.unfinished}")
 
     async def task_done(self, task, flag: int = 1):
         if flag != -2:
             await self.unfinished_dec(task)
-            # print(f"done {task}, lef:{self.unfinished}")
         await self.counts_inc(task, flag)
 
     async def get_counts_dict(self):

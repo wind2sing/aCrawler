@@ -14,8 +14,7 @@ def process_time(value):
             elif seg.endswith("h"):
                 res += 60 * int(seg.replace("h", ""))
         return res
-    else:
-        return value
+    return value
 
 
 class MovieItem(ParselItem):
@@ -62,7 +61,7 @@ class HorrorHandler(Handler):
 
     async def handle_after(self, item):
         if item["genres"] and "Horror" in item["genres"]:
-            self.logger.warning("({}) is a horror movie!!!!".format(item["title"]))
+            self.logger.warning(f"({item['title']}) is a horror movie!!!!")
 
             yield {"singal": "Leaving...", "title": item["title"]}
 
