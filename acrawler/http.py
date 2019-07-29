@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import aiofiles
 import aiohttp
-from multidict import CIMultiDictProxy
+from multidict import CIMultiDict
 from parsel import Selector
 from pyquery import PyQuery
 from yarl import URL
@@ -168,14 +168,12 @@ class Request(Task):
                     url=cresp.url,
                     status=cresp.status,
                     cookies=cresp.cookies,
-                    headers=cresp.headers,
-                    history=cresp.history,
+                    headers=cresp.headers.copy(),
                     body=body,
                     encoding=encoding,
                     links_to_abs=self.links_to_abs,
                     callbacks=self.callbacks.copy(),
                     request=self,
-                    request_info=cresp.request_info,
                     meta=self.meta,
                     family=self.httpfamily,
                 )
@@ -189,18 +187,16 @@ class Request(Task):
                 await self.session.close()
 
     def __str__(self):
-        return "<Task %s> (%s)" % (self.__class__.__name__, self.url)
+        return f"<Task {self.primary_family}> ({self.url.human_repr()})"
 
     def __getstate__(self):
         state = super().__getstate__()
         state.pop("session", None)
-        state.pop("response", None)
         state.pop("client", None)
         return state
 
     def __setstate__(self, state):
         super().__setstate__(state)
-        self.__dict__["response"] = None
         self.__dict__["session"] = None
         self.__dict__["client"] = None
 
@@ -230,10 +226,8 @@ class Response(Task):
         url: URL,
         status: int,
         cookies: "http.cookies.SimpleCookie",
-        headers: CIMultiDictProxy,
-        history: _History,
+        headers: CIMultiDict,
         request: Request,
-        request_info,
         body: bytes,
         encoding: str,
         links_to_abs: bool = False,
@@ -250,13 +244,12 @@ class Response(Task):
         self.status = status
         self.cookies = cookies
         self.headers = headers
-        self.history = history
+
         self.body = body
         self.encoding = encoding
         self.links_to_abs = links_to_abs
         self.meta = meta
         self.request = request
-        self.request_info = request_info
         self.callbacks = callbacks
         self.bind_cbs = False
 
@@ -394,7 +387,24 @@ class Response(Task):
         self.callbacks = []
 
     def __str__(self):
-        return "<Task Response> <{}> ({})".format(self.status, self.url)
+        return f"<Task Response> <{self.status}> ({self.url.human_repr()})"
+
+    def __getstate__(self):
+        state = super().__getstate__()
+
+        sel = state.pop("_sel", None)
+        if sel:
+            state["__sel_text"] = sel.get()
+        return state
+
+    def __setstate__(self, state):
+        sel_text = state.pop("__sel_text", None)
+        if sel_text:
+            _sel = Selector(sel_text)
+        else:
+            _sel = None
+        super().__setstate__(state)
+        self.__dict__["_sel"] = _sel
 
 
 async def file_save_callback(response: Response):
