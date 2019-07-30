@@ -98,8 +98,6 @@ class Task:
 
     @property
     def ancestor(self):
-        if not self._ancestor:
-            self._ancestor = str(self.fingerprint)
         return self._ancestor
 
     @ancestor.setter

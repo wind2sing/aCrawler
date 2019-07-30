@@ -104,11 +104,13 @@ class Counter(BaseCounter):
         return self.counts
 
     async def unfinished_inc(self, task):
+        if task.ancestor:
         self.ancestor_unfinished[task.ancestor] += 1
         self.unfinished += 1
         self._finished.clear()
 
     async def unfinished_dec(self, task):
+        if task.ancestor:
         self.ancestor_unfinished[task.ancestor] -= 1
         if self.unfinished <= 0:
             raise ValueError("task_done() called too many times")
