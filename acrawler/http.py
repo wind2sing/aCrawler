@@ -108,6 +108,8 @@ class Request(Task):
         self.encoding = encoding
         self.links_to_abs = links_to_abs
 
+        self.inprogress = False  # is this request start execution; for counter
+
     @property
     def url_str(self):
         return self.url.human_repr()
@@ -142,8 +144,7 @@ class Request(Task):
 
     async def _execute(self, **kwargs):
         """Wraps :meth:`fetch`"""
-        async for task in self.fetch():
-            yield task
+        yield await self.fetch()
 
     async def send(self):
         """This method is used for independent usage of Request without Crawler.
@@ -184,7 +185,7 @@ class Request(Task):
                 )
                 rt = self.response
                 logger.info(rt)
-                yield rt
+                return rt
         except Exception as e:
             raise e
         finally:
@@ -522,6 +523,11 @@ class BrowserRequest(Request):
         )
         self.page_callback = page_callback
         self.page = None
+
+    async def _execute(self, **kwargs):
+        """Wraps :meth:`fetch`"""
+        async for task in to_asyncgen(self.fetch):
+            yield task
 
     async def fetch(self):
         """Sends a request and return the response as a task."""

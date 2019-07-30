@@ -69,12 +69,12 @@ class Worker:
 
                 try:
                     if self.is_req:
-                        self.crawler.counter.require_req(task)
+                        await self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
                         await self.crawler.add_task(new_task, ancestor=task.ancestor)
                 except asyncio.CancelledError as e:
                     if self.is_req:
-                        self.crawler.counter.release_req(task)
+                        await self.crawler.counter.release_req(task)
                     raise e
                 except SkipTaskError:
                     logger.debug("Skip task {}".format(task))
@@ -85,13 +85,14 @@ class Worker:
                     await self.crawler.counter.task_done(task, -2)
                     await self.crawler.add_task(task, dont_filter=True, flag=-2)
                     if self.is_req:
-                        self.crawler.counter.release_req(task)
+                        await self.crawler.counter.release_req(task)
                     self.current_task = None
                     await asyncio.sleep(0.5)
                     continue
                 except Exception as e:
                     exception = True
                     if not task.ignore_exception and task.tries < self._max_tries:
+                        task.exetime = time.time()
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
                         logger.error(
@@ -112,7 +113,7 @@ class Worker:
                     await self.crawler.counter.task_done(task, 1)
 
                 if self.is_req:
-                    self.crawler.counter.release_req(task)
+                    await self.crawler.counter.release_req(task)
 
                 if task.recrawl > 0 and not retry:
                     task.tries = 0

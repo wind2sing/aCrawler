@@ -30,6 +30,14 @@ class BaseCounter:
     async def unfinished_dec(self, task):
         raise NotImplementedError()
 
+    async def required_inc(self):
+        """Called in delay handler to record current requests"""
+        raise NotImplementedError()
+
+    async def required_dec(self):
+        """Called in delay handler to record current requests"""
+        raise NotImplementedError()
+
     async def counts_inc(self, task, flag):
         raise NotImplementedError()
 
@@ -37,9 +45,6 @@ class BaseCounter:
         raise NotImplementedError()
 
     def join_by_ancestor_unfinished(self):
-        raise NotImplementedError()
-
-    async def get_counts(self):
         raise NotImplementedError()
 
     async def task_add(self, task, flag: int = 1):
@@ -54,7 +59,12 @@ class BaseCounter:
     async def get_counts_dict(self):
         raise NotImplementedError()
 
-    def require_req(self, req):
+    async def get_required(self):
+        raise NotImplementedError()
+
+    async def require_req(self, req):
+
+        # Check limit
         req.chosts = []  # this contains hosts for special check
         req.cuni = False  # this flags its state for unicheck
 
@@ -89,12 +99,21 @@ class BaseCounter:
 
         delay = randint(int(target * 8), (target * 12)) / 10
         await asyncio.sleep(delay)
+        await self.required_inc()
+        req.inprogress = True
+
+    async def release_req(self, req):
+
+        # Release limit
         if self.unicheck and req.cuni:
             self.uniconf[req.url.host] += 1
 
         if self.check and req.chosts:
             for host in req.chosts:
                 self.conf[host] += 1
+        if req.inprogress:
+            await self.required_dec()
+            req.inprogress = False
 
 
 class Counter(BaseCounter):
@@ -109,6 +128,9 @@ class Counter(BaseCounter):
         self._finished = asyncio.Event(loop=crawler.loop)
         self._finished.set()
 
+        # Counts of concurrent requests
+        self.required = 0
+
     async def join(self):
         if self.unfinished > 0:
             await self._finished.wait()
@@ -118,27 +140,36 @@ class Counter(BaseCounter):
             await asyncio.sleep(0.5)
 
     async def counts_inc(self, task, flag):
-        if flag > 0:
+        if flag >= 0:
             rc = self.counts.setdefault(task.primary_family, [0, 0])
             rc[flag] += 1
 
     async def get_counts_dict(self):
         return self.counts
 
+    async def get_required(self):
+        return self.required
+
     async def unfinished_inc(self, task):
         if task.ancestor:
-        self.ancestor_unfinished[task.ancestor] += 1
+            self.ancestor_unfinished[task.ancestor] += 1
         self.unfinished += 1
         self._finished.clear()
 
     async def unfinished_dec(self, task):
         if task.ancestor:
-        self.ancestor_unfinished[task.ancestor] -= 1
+            self.ancestor_unfinished[task.ancestor] -= 1
         if self.unfinished <= 0:
             raise ValueError("task_done() called too many times")
         self.unfinished -= 1
         if self.unfinished == 0:
             self._finished.set()
+
+    async def required_inc(self):
+        self.required += 1
+
+    async def required_dec(self):
+        self.required -= 1
 
     def __getstate__(self):
         state = self.__dict__
@@ -164,6 +195,8 @@ class RedisCounter(BaseCounter):
         cname = crawler.__class__.__name__
         # a redis int
         self.unfinished_key = "acrawler:" + cname + ":c:unfinished"
+        self.required_key = "acrawler:" + cname + ":c:required"
+
         # Redis Sorted Set
         self.ancestor_unfinished_key = "acrawler:" + cname + ":c:ancestor_unfinished"
         # Redis Sorted Set
@@ -182,11 +215,10 @@ class RedisCounter(BaseCounter):
             await asyncio.sleep(0.5)
 
     async def counts_inc(self, task, flag):
-        if flag != -1:
-            if flag == 1:
-                await self.redis.zincrby(self.counts_key_suc, 1, task.primary_family)
-            elif flag == 0:
-                await self.redis.zincrby(self.counts_key_fail, 1, task.primary_family)
+        if flag == 1:
+            await self.redis.zincrby(self.counts_key_suc, 1, task.primary_family)
+        elif flag == 0:
+            await self.redis.zincrby(self.counts_key_fail, 1, task.primary_family)
 
     async def get_unfinished(self):
         return int(await self.redis.get(self.unfinished_key) or 0)
@@ -202,17 +234,32 @@ class RedisCounter(BaseCounter):
 
         return res
 
+    async def get_required(self):
+        return await self.redis.get(self.required_key)
+
     async def unfinished_inc(self, task):
-        tr = self.redis.multi_exec()
-        tr.zincrby(self.ancestor_unfinished_key, 1, task.ancestor)
-        tr.incr(self.unfinished_key)
-        await tr.execute()
+        if task.ancestor:
+            tr = self.redis.multi_exec()
+            tr.zincrby(self.ancestor_unfinished_key, 1, task.ancestor)
+            tr.incr(self.unfinished_key)
+            await tr.execute()
+        else:
+            await self.redis.incr(self.unfinished_key)
         self._finished.clear()
 
     async def unfinished_dec(self, task):
-        tr = self.redis.multi_exec()
-        tr.zincrby(self.ancestor_unfinished_key, -1, task.ancestor)
-        tr.decr(self.unfinished_key)
-        _, res = await tr.execute()
+        if task.ancestor:
+            tr = self.redis.multi_exec()
+            tr.zincrby(self.ancestor_unfinished_key, -1, task.ancestor)
+            tr.decr(self.unfinished_key)
+            _, res = await tr.execute()
+        else:
+            res = await self.redis.decr(self.unfinished_key)
         if int(res) == 0:
             self._finished.set()
+
+    async def required_inc(self):
+        await self.redis.incr(self.required_key)
+
+    async def required_dec(self):
+        await self.redis.decr(self.required_key)
