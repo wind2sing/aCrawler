@@ -4,20 +4,19 @@ You can providing settings by writing a new `setting.py` in your working directo
 in :class:`~acrawler.crawler.Crawler`'s attributes.
 """
 REQUEST_CONFIG = {
-    'headers': {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
-    },
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
+    }
 }
 
 
 MIDDLEWARE_CONFIG = {
-    'acrawler.handlers.RequestDelay': 1900,
-    'acrawler.handlers.RequestPrepareSession': 1800,
-    'acrawler.handlers.RequestMergeConfig': 1700,
-    'acrawler.handlers.ResponseAddCallback': 1900,
-    'acrawler.handlers.ResponseCheckStatus': 1800,
-    'acrawler.handlers.CrawlerStartAddon': 2000,
-    'acrawler.handlers.ItemCollector': 1700,
+    "acrawler.handlers.RequestPrepareSession": 1800,
+    "acrawler.handlers.RequestMergeConfig": 1700,
+    "acrawler.handlers.ResponseAddCallback": 1900,
+    "acrawler.handlers.ResponseCheckStatus": 1800,
+    "acrawler.handlers.CrawlerStartAddon": 2000,
+    "acrawler.handlers.ItemCollector": 1700,
 }
 
 
@@ -29,7 +28,7 @@ DOWNLOAD_DELAY_SPECIAL_HOST: dict = {}
 
 DISABLE_COOKIES = False
 
-LOG_LEVEL = 'INFO'
+LOG_LEVEL = "INFO"
 """Default log level."""
 
 LOG_TO_FILE: str = None
@@ -69,14 +68,14 @@ REDIS_QUEUE_KEY = None
 REDIS_DF_KEY = None
 """"""
 
-REDIS_ADDRESS = 'redis://localhost'
+REDIS_ADDRESS = "redis://localhost"
 """"""
 
 WEB_ENABLE = False
 """Set to True if you want web service support.
 If it is True, the crawler will lock itself always."""
 
-WEB_HOST = 'localhost'
+WEB_HOST = "localhost"
 """Host for the web service."""
 
 WEB_PORT = 8079

@@ -1,18 +1,28 @@
 import asyncio
 from collections import defaultdict
+from random import randint
+
 from acrawler.exceptions import ReScheduleError
 
 
 class BaseCounter:
     def __init__(self, crawler):
         self.crawler = crawler
+
+        # Checking log by special host
         self.conf = self.crawler.config.get("MAX_REQUESTS_SPECIAL_HOST", {}).copy()
         self.hosts = list(self.conf.keys())
         self.check = len(self.hosts) > 0
 
+        # Checking log by per host
         self.uni = self.crawler.config.get("MAX_REQUESTS_PER_HOST", 0)
         self.uniconf = {}
         self.unicheck = self.uni > 0
+
+        # Delay config
+        self.delay = self.crawler.config.get("DOWNLOAD_DELAY", 0)
+        self.conf = self.crawler.config.get("DOWNLOAD_DELAY_SPECIAL_HOST", {}).copy()
+        self.delay_hosts = list(self.conf.keys())
 
     async def unfinished_inc(self, task):
         raise NotImplementedError()
@@ -66,7 +76,19 @@ class BaseCounter:
                     else:
                         raise ReScheduleError()
 
-    def release_req(self, req):
+        # Start delay
+        origin = True
+        target = 0
+        for host in self.hosts:
+            if host in req.url.host:
+                target += self.conf[host]
+                origin = False
+
+        if origin:
+            target = self.delay
+
+        delay = randint(int(target * 8), (target * 12)) / 10
+        await asyncio.sleep(delay)
         if self.unicheck and req.cuni:
             self.uniconf[req.url.host] += 1
 
