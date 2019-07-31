@@ -192,7 +192,7 @@ class RedisCounter(BaseCounter):
     def __init__(self, crawler):
         super().__init__(crawler)
         self.redis = None
-        cname = crawler.__class__.__name__
+        cname = crawler.name
         # a redis int
         self.unfinished_key = "acrawler:" + cname + ":c:unfinished"
         self.required_key = "acrawler:" + cname + ":c:required"
