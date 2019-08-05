@@ -1,21 +1,18 @@
-import logging
-import hashlib
 import asyncio
+import logging
 import pickle
-from acrawler.utils import check_import
-import traceback
 import time
 
-# Typing
-import acrawler
+from acrawler.utils import check_import
 
-_Task = 'acrawler.task.Task'
+# Typing
+
+_Task = "acrawler.task.Task"
 
 logger = logging.getLogger(__name__)
 
 
 class BaseDupefilter:
-
     async def start(self):
         pass
 
@@ -48,9 +45,8 @@ class SetDupefilter(BaseDupefilter):
         fp = task.fingerprint
         if await self.has_fp(fp):
             return True
-        else:
-            await self.add_fp(fp)
-            return False
+        await self.add_fp(fp)
+        return False
 
     async def has_fp(self, fp):
         return fp in self.fingerprints
@@ -66,21 +62,18 @@ class SetDupefilter(BaseDupefilter):
 
 
 class RedisDupefilter(BaseDupefilter):
-    def __init__(self, address='redis://localhost', df_key='acrawler:df'):
+    def __init__(self, address="redis://localhost", df_key="acrawler:df"):
         self.address = address
         self.df_key = df_key
         self.redis = None
 
     async def start(self):
-        aioredis = check_import('aioredis')
+        aioredis = check_import("aioredis")
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def seen(self, task: _Task):
         fp = task.fingerprint
-        if await self.add_fp(fp) == 0:
-            return True
-        else:
-            return False
+        return await self.add_fp(fp) == 0
 
     async def add_fp(self, fp):
         return await self.redis.sadd(self.df_key, fp)
@@ -100,20 +93,13 @@ class RedisDupefilter(BaseDupefilter):
 
 
 class BaseQueue:
-
     async def start(self):
         pass
 
     async def push(self, task):
         raise NotImplementedError
 
-    def push_nowait(self, task):
-        raise NotImplementedError
-
     async def pop(self):
-        raise NotImplementedError
-
-    def pop_nowait(self):
         raise NotImplementedError
 
     async def get_length(self):
@@ -125,10 +111,12 @@ class BaseQueue:
     async def close(self):
         pass
 
-    def serialize(self, task):
+    @staticmethod
+    def serialize(task):
         return pickle.dumps(task)
 
-    def deserialize(self, message) -> _Task:
+    @staticmethod
+    def deserialize(message) -> _Task:
         return pickle.loads(message)
 
 
@@ -157,6 +145,7 @@ class AsyncPQ(BaseQueue):
                 await self.transfer_waiting()
 
     async def transfer_waiting(self):
+        """Transfer all prepared task from waiting queue to ready queue."""
         now = time.time()
         while 1:
             try:
@@ -168,11 +157,6 @@ class AsyncPQ(BaseQueue):
                     break
             except asyncio.QueueEmpty:
                 break
-
-    # async def pop_nowait(self):
-    #     await self.transfer_waiting()
-    #     r = (self.pq.get_nowait())[1]
-    #     return r
 
     async def get_length(self):
         return self.pq.qsize() + self.waiting.qsize()
@@ -191,30 +175,28 @@ class AsyncPQ(BaseQueue):
 
 
 class RedisPQ(BaseQueue):
-    def __init__(self, address='redis://localhost', q_key='acrawler:queue'):
+    def __init__(self, address="redis://localhost", q_key="acrawler:queue"):
         super().__init__()
         self.address = address
-        self.pq_key = q_key + ':pq'
-        self.waiting_key = q_key + ':waiting'
-        self.redis: 'aioredis.Redis' = None
+        self.pq_key = q_key + ":pq"
+        self.waiting_key = q_key + ":waiting"
+        self.redis: "aioredis.Redis" = None
 
     async def start(self):
-        aioredis = check_import('aioredis')
+        aioredis = check_import("aioredis")
         self.redis = await aioredis.create_redis_pool(self.address)
 
     async def push(self, task: _Task):
         """Push a task directly to the waiting queue.
         """
-        return await self.redis.zadd(self.waiting_key,
-                                     task.exetime,
-                                     self.serialize(task))
+        return await self.redis.zadd(
+            self.waiting_key, task.exetime, self.serialize(task)
+        )
 
     async def push_to_pq(self, task: _Task):
         """Push a task directly to the priority queue.
         """
-        return await self.redis.zadd(self.pq_key,
-                                     -task.score,
-                                     self.serialize(task))
+        return await self.redis.zadd(self.pq_key, -task.score, self.serialize(task))
 
     async def pop(self):
         """Pop a task from priority queue. Blocking if empty.
