@@ -233,7 +233,6 @@ See `examples <examples/>`_.
 Todo
 ----
 
-* Fix default fingerprint functions for request
 * Add delta_key support for request
 * Cralwer's name for distinguishing
 * Command Line config support
