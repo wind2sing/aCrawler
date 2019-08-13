@@ -341,9 +341,12 @@ class ExpiredWatcher(Handler):
             it will be ignored.
     """
 
-    expired = asyncio.Event()
     last_handle_time = None
     ttl: int = 20
+
+    def __init__(self, *args, **kwargs):
+        self.expired = asyncio.Event()
+        super().__init__(*args, **kwargs)
 
     async def on_start(self):
         self.crawler.create_task(self.expired_worker())
