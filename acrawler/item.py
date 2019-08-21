@@ -190,6 +190,16 @@ class Processors(object):
             else:
                 return text
 
+    @staticmethod
+    def default(default, fn=bool):
+        def _f(value):
+            if bool(value):
+                return value
+            else:
+                return default
+
+        return _f
+
 
 class Field:
     def __init__(self, default=None, drop_false=True):
@@ -303,30 +313,41 @@ class ParselItem(Item):
 
     """
 
-    default_rules = {}
-
-    css_rules_first = {}
-    xpath_rules_first = {}
-    re_rules_first = {}
-
-    css_rules = {}
-    xpath_rules = {}
-    re_rules = {}
-
+    default = {}
     css = {}
     xpath = {}
     re = {}
+    inline = {}
 
-    field_processors = {}
+    inline_divider = None
+
+    _bindmap = {}
 
     def __init__(self, selector, extra=None, **kwargs):
         super().__init__(extra=extra, **kwargs)
         self.sel = selector
+        self.default_rules = self.default
 
-        for k, v in self.field_processors.items():
-            if not isinstance(v, list):
-                self.field_processors[k] = v
+        self.css_rules_first = {}
+        self.xpath_rules_first = {}
+        self.re_rules_first = {}
 
+        self.css_rules = {}
+        self.xpath_rules = {}
+        self.re_rules = {}
+        self.field_processors = {}
+
+    async def _execute(self, **kwargs) -> _TaskGenerator:
+        await self._load()
+        async for task in super()._execute(**kwargs):
+            yield task
+        yield None
+
+    async def load(self):
+        # this method can be called without going through scheduler
+        return [task async for task in self._execute()]
+
+    async def _parse_rules(self):
         for field, rule_ in self.css.items():
             if isinstance(rule_, str):
                 rule = rule_
@@ -363,14 +384,38 @@ class ParselItem(Item):
             else:
                 self.re_rules_first[field] = rule
 
-    async def _execute(self, **kwargs) -> _TaskGenerator:
-        self.load()
-        async for task in super()._execute(**kwargs):
-            yield task
-        yield None
+        self.field_processors.update(self._bindmap)
 
-    def load(self):
+    async def _parse_inline(self):
+        for field, rule_ in self.inline.items():
+
+            if isinstance(rule_, list):
+                rule = rule_[0]
+                li = self.field_processors.setdefault(field, [])
+                li.extend(rule_[1:])
+            else:
+                rule = rule_
+
+            if not issubclass(rule, ParselItem):
+                raise Exception(f"inline rule must use ParselItem type! :{rule}")
+
+            css_div = rule.inline_divider
+            if css_div:
+                value = []
+                for sel in self.sel.css(css_div):
+                    item = rule(sel)
+                    await item.load()
+                    value.append(item.content)
+            else:
+                item = rule(self.sel)
+                await item.load()
+                value = item.content
+            self[field] = value
+
+    async def _load(self):
         # Main function to return an item.
+        await self._parse_rules()
+        await self._parse_inline()
         item = self.content
         for field, default in self.default_rules.items():
             if field not in self.extra:
@@ -438,7 +483,7 @@ class ParselItem(Item):
                     field = func_name.replace("process_", "", 1)
                 else:
                     field = func_name
-            lis = cls.field_processors.setdefault(field, [])
+            lis = cls._bindmap.setdefault(field, [])
             if not isinstance(lis, list):
                 lis = [lis]
             if map:
