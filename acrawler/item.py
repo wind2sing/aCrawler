@@ -178,7 +178,9 @@ class Processors(object):
     @staticmethod
     def parse_datetime(text, drop_error=True):
         if text:
-            match = re.search(r"(?P<year>\d{4}).*(?P<month>\d{2}).*(?P<day>\d{2})日", text)
+            match = re.search(
+                r"(?P<year>\d{4}).*(?P<month>\d{2}).*(?P<day>\d{2})日", text
+            )
             if match:
                 date = datetime(**{k: int(v) for k, v in match.groupdict().items()})
                 return date
@@ -311,43 +313,55 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
+    css = {}
+    xpath = {}
+    re = {}
+
     field_processors = {}
 
-    def __init__(
-        self,
-        selector,
-        css_rules=None,
-        xpath_rules=None,
-        re_rules=None,
-        css_rules_first=None,
-        xpath_rules_first=None,
-        re_rules_first=None,
-        default_rules=None,
-        field_processors=None,
-        extra=None,
-        **kwargs,
-    ):
+    def __init__(self, selector, extra=None, **kwargs):
         super().__init__(extra=extra, **kwargs)
         self.sel = selector
 
-        if default_rules:
-            self.default_rules = default_rules
-        if css_rules_first:
-            self.css_rules_first = css_rules_first
-        if xpath_rules_first:
-            self.xpath_rules_first = xpath_rules_first
-        if re_rules_first:
-            self.re_rules_first = re_rules_first
+        for k, v in self.field_processors.items():
+            if not isinstance(v, list):
+                self.field_processors[k] = v
 
-        if css_rules:
-            self.css_rules = css_rules
-        if xpath_rules:
-            self.xpath_rules = xpath_rules
-        if re_rules:
-            self.re_rules = re_rules
+        for field, rule_ in self.css.items():
+            if isinstance(rule_, str):
+                rule = rule_
+            elif isinstance(rule_, list):
+                rule = rule_[0]
+                li = self.field_processors.setdefault(field, [])
+                li.extend(rule_[1:])
+            if rule[0] == "[" and rule[-1] == "]":
+                self.css_rules[field] = rule[1:-1]
+            else:
+                self.css_rules_first[field] = rule
 
-        if field_processors:
-            self.field_processors = field_processors
+        for field, rule_ in self.xpath.items():
+            if isinstance(rule_, str):
+                rule = rule_
+            elif isinstance(rule_, list):
+                rule = rule_[0]
+                li = self.field_processors.setdefault(field, [])
+                li.extend(rule_[1:])
+            if rule[0] == "[" and rule[-1] == "]":
+                self.xpath_rules[field] = rule[1:-1]
+            else:
+                self.xpath_rules_first[field] = rule
+
+        for field, rule_ in self.re.items():
+            if isinstance(rule_, str):
+                rule = rule_
+            elif isinstance(rule_, list):
+                rule = rule_[0]
+                li = self.field_processors.setdefault(field, [])
+                li.extend(rule_[1:])
+            if rule[0] == "[" and rule[-1] == "]":
+                self.re_rules[field] = rule[1:-1]
+            else:
+                self.re_rules_first[field] = rule
 
     async def _execute(self, **kwargs) -> _TaskGenerator:
         self.load()
@@ -392,13 +406,9 @@ class ParselItem(Item):
 
     def process(self, item):
         # Call field processors.
-
         for field, processors in self.field_processors.items():
-            if isinstance(processors, list):
-                for processor in processors:
-                    self._on_field(field, processor)
-            else:
-                self._on_field(field, processors)
+            for processor in processors:
+                self._on_field(field, processor)
 
     def _on_field(self, field, processor=lambda x: x, dest_field: str = None):
         try:
