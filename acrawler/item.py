@@ -1,13 +1,14 @@
 import logging
 import re
-from collections import MutableMapping, Iterable
+from datetime import datetime
+from collections import MutableMapping
+from typing import AsyncGenerator, Callable
+
+from parsel import Selector
+
+from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
-from parsel import Selector
-from inspect import isfunction, iscoroutinefunction, ismethod, isgeneratorfunction
-
-# Typing
-from typing import Union, Optional, Any, AsyncGenerator, Callable, Dict, List
 
 _Function = Callable
 _TaskGenerator = AsyncGenerator[Task, None]
@@ -67,6 +68,10 @@ class Item(Task, MutableMapping):
         for key in iterable:
             d[key] = value
         return d
+
+    @classmethod
+    def drop(cls):
+        raise SkipTaskImmediatelyError()
 
     async def _execute(self, **kwargs) -> _TaskGenerator:
         async for task in self._process():
@@ -170,11 +175,28 @@ class Processors(object):
 
         return _f
 
+    @staticmethod
+    def parse_datetime(text, drop_error=True):
+        if text:
+            match = re.search(r"(?P<year>\d{4}).*(?P<month>\d{2}).*(?P<day>\d{2})日", text)
+            if match:
+                date = datetime(**{k: int(v) for k, v in match.groupdict().items()})
+                return date
+        else:
+            if drop_error:
+                ParselItem.drop_field()
+            else:
+                return text
+
 
 class Field:
-    def __init__(self, default=None):
-        self.value = default
+    def __init__(self, default=None, drop_false=True):
+        if callable(default):
+            self.value = default()
+        else:
+            self.value = default
         self._rules = []
+        self.drop_false = drop_false
 
     def css(self, rule: str):
         self._rules.append(("css", rule))
@@ -231,7 +253,7 @@ class Field:
                 target = rule(target)
             elif rkey == "drop":
                 if rule(target):
-                    return False
+                    raise DropFieldError
             elif rkey == "first":
                 if len(target) > 0:
                     target = target[0]
@@ -240,11 +262,15 @@ class Field:
             else:
                 # call parsel to parse
                 if rule is None:
-                    target = getattr(target, rkey)()
+                    v = getattr(target, rkey)()
                 else:
-                    target = getattr(target, rkey)(rule)
+                    v = getattr(target, rkey)(rule)
+                if self.drop_false and not v:
+                    raise DropFieldError
+                else:
+                    target = v
         self.value = target
-        return True
+        return self.value
 
 
 class ParselItem(Item):
@@ -285,7 +311,6 @@ class ParselItem(Item):
     xpath_rules = {}
     re_rules = {}
 
-    default_processors = []
     field_processors = {}
 
     def __init__(
@@ -335,7 +360,10 @@ class ParselItem(Item):
         item = self.content
         for field, default in self.default_rules.items():
             if field not in self.extra:
-                item.update({field: default})
+                if callable(default):
+                    item.update({field: default()})
+                else:
+                    item.update({field: default})
 
         for field, rule in self.css_rules_first.items():
             item.update({field: self.sel.css(rule).get()})
@@ -357,25 +385,35 @@ class ParselItem(Item):
 
         for key, field in self.__class__.__dict__.items():
             if isinstance(field, Field):
-                res = field.parse(self.sel)
-                if res:
-                    item.update({key: field.value})
+                self._on_field(field, dest_field=key)
 
         self.process(item)
         return self.content
 
     def process(self, item):
         # Call field processors.
-        for processor in self.default_processors:
-            for field in item.keys():
-                item[field] = processor(item[field])
 
         for field, processors in self.field_processors.items():
             if isinstance(processors, list):
                 for processor in processors:
-                    item[field] = processor(item[field])
+                    self._on_field(field, processor)
             else:
-                item[field] = processors(item[field])
+                self._on_field(field, processors)
+
+    def _on_field(self, field, processor=lambda x: x, dest_field: str = None):
+        try:
+            if isinstance(field, str):
+                dest_field = dest_field or field
+                val = processor(self[field])
+            elif isinstance(field, Field):
+                val = field.parse(self.sel)
+            self[dest_field] = val
+        except DropFieldError:
+            self.pop(dest_field, None)
+
+    @classmethod
+    def drop_field(cls):
+        raise DropFieldError()
 
     @classmethod
     def bind(cls, field: str = None, map=False):

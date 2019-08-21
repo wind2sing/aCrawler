@@ -1,4 +1,3 @@
-
 class SkipTaskError(Exception):
     """Prevent the task from execution and skip it (considered as a success).
 
@@ -6,6 +5,7 @@ class SkipTaskError(Exception):
     continue to handle the task.
 
     """
+
     pass
 
 
@@ -16,6 +16,7 @@ class SkipTaskImmediatelyError(SkipTaskError):
     continue to handle the task.
 
     """
+
     pass
 
 
@@ -38,6 +39,7 @@ class ReScheduleImmediatelyError(ReScheduleError):
     If this exception is raised, execution/handling stops and posterior Handlers won't 
     continue to handle the task.
     """
+
     pass
 
 
@@ -50,4 +52,9 @@ class ResponseStatusError(Exception):
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        return f'<{self.status}>'
+        return f"<{self.status}>"
+
+
+class DropFieldError(Exception):
+    pass
+
