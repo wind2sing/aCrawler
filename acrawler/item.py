@@ -118,32 +118,34 @@ class Processors(object):
     """
 
     @staticmethod
-    def first(values):
+    def first():
         """ get the first element from the values
         """
-        if len(values) > 0:
-            return values[0]
-        else:
-            return None
+
+        def _f(values):
+            if isinstance(values, list) and values:
+                return values[0]
+            else:
+                return values
+
+        return _f
 
     @staticmethod
-    def strip(value):
+    def strip():
         """ strip every string in values
         """
-        if isinstance(value, list):
-            return [Processors.strip(v) for v in value]
-        elif isinstance(value, dict):
-            return {k: Processors.strip(v) for k, v in value.items()}
-        elif isinstance(value, str):
-            return str.strip(value)
-        else:
-            return value
 
-    @staticmethod
-    def drop_false(values):
-        if isinstance(values, list):
-            return [v for v in values if v]
-        return values
+        def _f(value):
+            if isinstance(value, list):
+                return [_f(v) for v in value]
+            elif isinstance(value, dict):
+                return {k: _f(v) for k, v in value.items()}
+            elif isinstance(value, str):
+                return str.strip(value)
+            else:
+                return value
+
+        return _f
 
     @staticmethod
     def map(func):
@@ -156,12 +158,20 @@ class Processors(object):
         return _f
 
     @staticmethod
-    def filter(func):
+    def filter(func=bool):
         """ pick from those elements of the values list for which function returns true
         """
 
         def _f(values):
             return [v for v in values if func(v)]
+
+        return _f
+
+    @staticmethod
+    def drop(func=bool):
+        def _f(values):
+            if func(values):
+                raise DropFieldError
 
         return _f
 
@@ -176,19 +186,22 @@ class Processors(object):
         return _f
 
     @staticmethod
-    def parse_datetime(text, drop_error=True):
-        if text:
-            match = re.search(
-                r"(?P<year>\d{4}).*(?P<month>\d{2}).*(?P<day>\d{2})日", text
-            )
-            if match:
-                date = datetime(**{k: int(v) for k, v in match.groupdict().items()})
-                return date
-        else:
-            if drop_error:
-                ParselItem.drop_field()
+    def parse_datetime(drop_error=True):
+        def _f(text):
+            if text:
+                match = re.search(
+                    r"(?P<year>\d{4}).*\D(?P<month>\d{2}).*\D(?P<day>\d{2})", text
+                )
+                if match:
+                    date = datetime(**{k: int(v) for k, v in match.groupdict().items()})
+                    return date
             else:
-                return text
+                if drop_error:
+                    ParselItem.drop_field()
+                else:
+                    return text
+
+        return _f
 
     @staticmethod
     def default(default, fn=bool):
