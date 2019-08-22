@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+from copy import deepcopy
 from typing import AsyncGenerator, Callable, Iterable, List, Union
 from urllib.parse import urljoin
 
@@ -72,7 +73,7 @@ class Request(Task):
         request_config: dict = None,
         status_allowed: list = None,
         encoding=None,
-        links_to_abs=False,
+        links_to_abs=True,
         # Below are paras for parent class
         dont_filter: bool = False,
         ignore_exception: bool = False,
@@ -184,7 +185,7 @@ class Request(Task):
                     family=self.httpfamily,
                 )
                 rt = self.response
-                logger.info(rt)
+                logger.info(f"<{self.response.status}> ({self.response.url_str})")
                 return rt
         except Exception as e:
             raise e
@@ -382,6 +383,38 @@ class Response(Task):
             raise ValueError("urljoin receive bad argument{}".format(a))
         return urljoin(self.url_str, url)
 
+    def paginate(self, css, limit=0):
+        """ yield requests with same pattern by following links.
+
+        Args:
+            css (str): css selector
+        """
+        count = 0
+        for url in self.sel.css(css).getall():
+            request = deepcopy(self.request)
+            request.url = URL(url)
+            yield request
+            count += 1
+            if limit and count >= limit:
+                break
+
+    def follow(self, css, callback=None, limit=0, **kwargs):
+        """ yield requests in current page.
+        Additional keyword arguments will be used for constructing request.
+
+        Args:
+            css (str): css selector
+            callback (callable, optional):  Defaults to None.
+        """
+        count = 0
+        for url in self.sel.css(css).getall():
+            request = Request(url, callback=callback, **kwargs)
+            request.url = URL(url)
+            yield request
+            count += 1
+            if limit and count >= limit:
+                break
+
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
             for f in func:
@@ -535,7 +568,7 @@ class BrowserRequest(Request):
             self.page = await self.client.newPage()
             if self.url_str:
                 resp = await self.page.goto(self.url_str)
-                logger.info(f"<Task BrowserRequest> <{resp.status}> ({resp.url})")
+                logger.info(f"<BrowserRequest> <{resp.status}> ({resp.url})")
             else:
                 resp = None
             async for task in to_asyncgen(self.operate_page, self.page, resp):
