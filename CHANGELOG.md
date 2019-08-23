@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.1](https://github.com/wooddance/aCrawler/compare/v0.1.0...v0.1.1) (2019-08-23)
+
+
+### Bug Fixes
+
+* style ([9f91351](https://github.com/wooddance/aCrawler/commit/9f91351))
+
+
+
 ## [0.1.0](https://github.com/wooddance/aCrawler/compare/v0.0.9...v0.1.0) (2019-08-23)
 
 

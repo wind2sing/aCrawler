@@ -6,8 +6,8 @@ DESCRIPTION = "A simple web-crawling framework, based on aiohttp."
 URL = "https://github.com/wooddance/aCrawler"
 EMAIL = "zireael.me@gmail.com"
 AUTHOR = "wooddance"
-VERSION = "0.1.0"
-
+VERSION = "0.1.1"
+REQUIRED = ["aiohttp", "parsel", "cchardet"]
 
 setup(
     name=NAME,
@@ -18,6 +18,6 @@ setup(
     author_email=EMAIL,
     url=URL,
     python_requires=">=3.6.0",
-    install_requires=open("requirements.txt").read().splitlines(),
-    packages=find_packages(exclude=["tests", "docs"]),
+    install_requires=REQUIRED,
+    py_modules=["acrawler"],
 )
