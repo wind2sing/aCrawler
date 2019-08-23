@@ -18,30 +18,25 @@ def process_time(value):
 
 
 class MovieItem(ParselItem):
-    css_rules_first = {
+    css = {
         "title": "h1::text",
         "date": ".subtext a[href*=releaseinfo]::text",
-        "time": ".subtext time::text",
+        "time": [".subtext time::text", process_time],
         "rating": "span[itemprop=ratingValue]::text",
         "rating_count": "span[itemprop=ratingCount]::text",
         "metascore": ".metacriticScore span::text",
+        "genres": "[.subtext a[href*=genres]::text]",
+        "director": "[h4:contains(Director) ~ a[href*=name]::text]",
+        "writers": "[h4:contains(Writer) ~ a[href*=name]::text]",
+        "stars": "[h4:contains(Star) ~ a[href*=name]::text]",
     }
-
-    css_rules = {
-        "genres": ".subtext a[href*=genres]::text",
-        "director": "h4:contains(Director) ~ a[href*=name]::text",
-        "writers": "h4:contains(Writer) ~ a[href*=name]::text",
-        "stars": "h4:contains(Star) ~ a[href*=name]::text",
-    }
-
-    field_processors = {"time": process_time}
 
 
 class IMDBCrawler(Crawler):
     config = {"MAX_REQUESTS": 4, "DOWNLOAD_DELAY": 1}
 
     async def start_requests(self):
-        yield Request("https://www.imdb.com/chart/moviemeter", links_to_abs=True)
+        yield Request("https://www.imdb.com/chart/moviemeter")
 
     async def parse(self, response):
         for tr in response.sel.css(".lister-list tr"):
@@ -62,13 +57,6 @@ class HorrorHandler(Handler):
     async def handle_after(self, item):
         if item["genres"] and "Horror" in item["genres"]:
             self.logger.warning(f"({item['title']}) is a horror movie!!!!")
-
-            yield {"singal": "Leaving...", "title": item["title"]}
-
-
-@register("DefaultItem")
-def print_item(item):
-    print(item.content)
 
 
 if __name__ == "__main__":

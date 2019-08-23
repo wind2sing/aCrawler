@@ -1,14 +1,8 @@
-from acrawler import Crawler, ParselItem, Parser, Processors
-
-
-def print_first_twenty_words(values):
-    if values:
-        return values[0][:20]
+from acrawler import Crawler, ParselItem, Parser, Processors as x
 
 
 class MovieItem(ParselItem):
-    css_rules_first = {"name": "h1 > span::text"}
-    field_processors = {"name": [Processors.strip]}
+    css = {"name": ["h1 > span::text", x.strip()]}
 
     def custom_process(self, content):
         print(content)

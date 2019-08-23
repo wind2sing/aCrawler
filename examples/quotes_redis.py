@@ -1,28 +1,19 @@
-from acrawler import Crawler, ParselItem, Parser, Processors, get_logger
+from acrawler import Crawler, ParselItem, Parser, get_logger
 from acrawler.utils import redis_push_start_urls
 
 logger = get_logger("quotes")
 
 
-def get_twenty_words(value):
-    return value[:20]
-
-
 class QuoteItem(ParselItem):
     log = True
-    default_rules = {"type": "quote"}
-    css_rules_first = {"author": "small.author::text"}
-    xpath_rules_first = {"text": './/span[@class="text"]/text()'}
-
-    field_processors = {"text": get_twenty_words}
+    default = {"type": "quote"}
+    css = {"author": "small.author::text"}
+    xpath = {"text": ['.//span[@class="text"]/text()', lambda s: s.strip("“")[:20]]}
 
 
 class AuthorItem(ParselItem):
-    css_rules_first = {
-        "name": "h3.author-title::text",
-        "born": "span.author-born-date::text",
-    }
-    field_processors = {"name": [Processors.strip]}
+
+    css = {"name": "h3.author-title::text", "born": "span.author-born-date::text"}
 
 
 class QuoteCrawler(Crawler):
@@ -59,9 +50,7 @@ if __name__ == "__main__":
         "http://quotes.toscrape.com/page/5/",
         "http://quotes.toscrape.com/page/10/",
     ]
-    start_urls = [
-        "http://quotes.toscrape.com/page/{}/".format(i) for i in range(1, 1000)
-    ]
+
     redis_push_start_urls("acrawler:QuoteCrawler:starturls", start_urls)
 
     c = QuoteCrawler().run()

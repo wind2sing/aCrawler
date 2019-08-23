@@ -8,20 +8,15 @@ logger = get_logger("quotes")
 
 class QuoteItem(ParselItem):
     log = True
-    default_rules = {"type": "quote"}
-    css_rules_first = {"author": "small.author::text"}
-    xpath_rules_first = {"text": './/span[@class="text"]/text()'}
-
-    field_processors = {"text": lambda s: s.strip("“")[:20]}
+    default = {"type": "quote"}
+    css = {"author": "small.author::text"}
+    xpath = {"text": ['.//span[@class="text"]/text()', lambda s: s.strip("“")[:20]]}
 
 
 class AuthorItem(ParselItem):
     log = True
-    default_rules = {"type": "author"}
-    css_rules_first = {
-        "name": "h3.author-title::text",
-        "born": "span.author-born-date::text",
-    }
+    default = {"type": "author"}
+    css = {"name": "h3.author-title::text", "born": "span.author-born-date::text"}
 
 
 class QuoteCrawler(Crawler):
