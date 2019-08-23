@@ -46,4 +46,5 @@ async def runweb(crawler: Crawler = None):
     port = crawler.config.get("WEB_PORT", 8079)
     site = web.TCPSite(runner, host, port)
     await site.start()
+    logger.info(f"Web server start on http://{host}:{port}")
     return runner

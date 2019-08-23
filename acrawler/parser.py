@@ -5,6 +5,7 @@ import re
 import urllib.parse
 import logging
 from typing import List, Callable
+
 # Typing
 _RE = str
 _Function = Callable
@@ -24,7 +25,8 @@ class Parser:
         css_divider: You may have many pieces in one response. Yield them in different selectors by providing a css_divider.
 
     """
-    in_pattern = ''
+
+    in_pattern = ""
     follow_patterns = []
     item_types = []
 
@@ -39,14 +41,16 @@ class Parser:
         else:
             yield selector
 
-    def __init__(self,
-                 in_pattern: _RE = '',
-                 follow_patterns: List[_RE] = None,
-                 selectors_loader: _Function = None,
-                 css_divider: str = None,
-                 item_type: ParselItem = None,
-                 extra: dict = None,
-                 add_meta: bool = False):
+    def __init__(
+        self,
+        in_pattern: _RE = "",
+        follow_patterns: List[_RE] = None,
+        selectors_loader: _Function = None,
+        css_divider: str = None,
+        item_type: ParselItem = None,
+        extra: dict = None,
+        add_meta: bool = False,
+    ):
 
         self.in_pattern = in_pattern
         self.follow_patterns = follow_patterns
@@ -82,8 +86,10 @@ class Parser:
                 pattern = re.compile(p)
                 html = response.text
                 sel = Selector(html)
-                links = [urllib.parse.urljoin(
-                    str(response.url), href) for href in sel.css('a::attr(href)').getall()]
+                links = [
+                    urllib.parse.urljoin(str(response.url), href)
+                    for href in sel.css("a::attr(href)").getall()
+                ]
                 for link in links:
                     if pattern.search(link):
                         rq = Request(link)
@@ -103,4 +109,5 @@ class Parser:
                     yield self.item_type(sel, extra=extra)
                 else:
                     logger.warning(
-                        f"Parser'item_type should be a subclass of <ParselItem>, {self.item_type}found!")
+                        f"Parser'item_type should be a subclass of <ParselItem>, {self.item_type}found!"
+                    )

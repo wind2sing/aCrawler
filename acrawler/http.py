@@ -391,8 +391,8 @@ class Response(Task):
         """
         count = 0
         for url in self.sel.css(css).getall():
-            request = deepcopy(self.request)
-            request.url = URL(url)
+            request = Request(url)
+            request.callbacks = self.request.callbacks
             yield request
             count += 1
             if limit and count >= limit:
@@ -409,11 +409,21 @@ class Response(Task):
         count = 0
         for url in self.sel.css(css).getall():
             request = Request(url, callback=callback, **kwargs)
-            request.url = URL(url)
             yield request
             count += 1
             if limit and count >= limit:
                 break
+
+    def spawn(self, css, item):
+        """ yield items in current page
+
+        Args:
+            css (str): css divider
+            item (ParselItem): item class
+        """
+
+        for sel in self.sel.css(css):
+            yield item(sel)
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):

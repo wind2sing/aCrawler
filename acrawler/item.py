@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from collections import MutableMapping
 from typing import AsyncGenerator, Callable
+from pprint import pformat
 
 from parsel import Selector
 
@@ -78,7 +79,7 @@ class Item(Task, MutableMapping):
             yield task
         yield None
         if self.log:
-            logger.info(self.content)
+            logger.info(f"{self.content}")
 
     async def _process(self):
         async for task in to_asyncgen(self.custom_process, self.content):
@@ -210,6 +211,17 @@ class Processors(object):
                 return value
             else:
                 return default
+
+        return _f
+
+    @staticmethod
+    def try_(*fns):
+        def _f(value):
+            for fn in fns:
+                try:
+                    return fn(value)
+                except Exception:
+                    pass
 
         return _f
 
@@ -496,6 +508,9 @@ class ParselItem(Item):
                     field = func_name.replace("process_", "", 1)
                 else:
                     field = func_name
+
+            if "_bindmap" not in cls.__dict__:
+                cls._bindmap = {}
             lis = cls._bindmap.setdefault(field, [])
             if not isinstance(lis, list):
                 lis = [lis]

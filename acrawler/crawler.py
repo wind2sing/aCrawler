@@ -381,17 +381,15 @@ class Crawler(object):
         # log three types of config
         level = self.config.get("LOG_LEVEL", "INFO")
         to_file = self.config.get("LOG_TO_FILE", None)
-
+        fmt = self.config.get("LOGGER_FMT", "%(name)-20s%(levelname)-8s %(message)s")
+        datefmt = self.config.get("LOGGER_DATE_FMT", "%Y-%m-%d %H:%M:%S")
         LOGGER = logging.getLogger("acrawler")
 
         if to_file:
             handler = logging.FileHandler(to_file)
         else:
             handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(name)-20s%(levelname)-8s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
+        formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
         handler.setFormatter(formatter)
 
         LOGGER.addHandler(handler)
@@ -437,12 +435,13 @@ class Crawler(object):
             )
             request_q1 = RedisPQ(
                 address=self.config.get("REDIS_ADDRESS"),
-                q_key=(self.config.get("REDIS_QUEUE_KEY") or ("acrawler:" + self.name)) + ":q1"
-
+                q_key=(self.config.get("REDIS_QUEUE_KEY") or ("acrawler:" + self.name))
+                + ":q1",
             )
             request_q2 = RedisPQ(
                 address=self.config.get("REDIS_ADDRESS"),
-                q_key=(self.config.get("REDIS_QUEUE_KEY") or("acrawler:" + self.name)) + ":q2"
+                q_key=(self.config.get("REDIS_QUEUE_KEY") or ("acrawler:" + self.name))
+                + ":q2",
             )
 
         self.sdl_req = Scheduler(df=request_df, q=request_q1)
@@ -472,11 +471,10 @@ class Crawler(object):
                 pass
             except Exception as e:
                 logger.error(traceback.format_exc())
+
         task = self.loop.create_task(wrapper(coro))
         self.taskers["Others"].append(task)
         return task
-
-
 
     async def _on_start(self):
         # call handlers's on_start()
@@ -540,10 +538,7 @@ class Crawler(object):
 
     async def _persist_load(self):
         if self.persistent and not self.redis_enable:
-            tag = (
-                self.config.get("PERSISTENT_NAME", None)
-                or ".acrawler." + self.name
-            )
+            tag = self.config.get("PERSISTENT_NAME", None) or ".acrawler." + self.name
             fname = tag
             self.fi_counter: Path = Path.cwd() / (fname + ".counter")
             self.fi_tasks: Path = Path.cwd() / (fname + ".tasks")
@@ -655,7 +650,6 @@ class Crawler(object):
                 await self.sdl_req.q.get_length_of_waiting(),
             )
         )
-
 
     def __getstate__(self):
         return {}
