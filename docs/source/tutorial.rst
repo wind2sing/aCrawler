@@ -29,11 +29,16 @@ Then we rewrite :meth:`~acrawler.acrawler.Crawler.parse` to parse the response::
 
     class IMDBCrawler(Crawler):
 
-        async def parse(self, response):
+        def parse(self, response):
             for tr in response.sel.css('.lister-list tr'):
                 link = tr.css('.titleColumn a::attr(href)').get()
                 if link:
                     yield Request(response.urljoin(link), callback=self.parse_movie)
+
+            # or using a shortcut method
+            yield from response.follow(
+                ".lister-list tr .titleColumn a::attr(href)", callback=self.parse_movie
+            )
 
 During parsing, the most important attribute is :attr:`acrawler.http.Response.sel`. It is a `Parsel <https://parsel.readthedocs.io/en/latest/>`_ ``Selector``. In this callback function, we also yield many new tasks :class:`~acrawler.http.Request` and we explictly pass ``callback`` parameter to them.
 
@@ -46,7 +51,7 @@ Then we need to define a new :class:`~acrawler.item.ParselItem` to store results
     from pprint import pprint
 
     def process_time(value):
-        # a self-defined field process function
+        # a self-defined field processing function
         # process time to minutes
         # '3h 1min' -> 181
         if value:
@@ -61,26 +66,28 @@ Then we need to define a new :class:`~acrawler.item.ParselItem` to store results
         else:
             return value
 
-    class MovieItem(ParselItem):
-        css_rules_first = {
-            'title': 'h1::text',
-            'date': '.subtext a[href*=releaseinfo]::text',
-            'time': '.subtext time::text',
-            'rating': 'span[itemprop=ratingValue]::text',
-            'rating_count': 'span[itemprop=ratingCount]::text',
-            'metascore': '.metacriticScore span::text'
-        }
+   class MovieItem(ParselItem):
+      log = True
+      css = {
+         # just some normal css rules
+         # see Parsel for detailed information
+         "date": ".subtext a[href*=releaseinfo]::text",
+         "rating": "span[itemprop=ratingValue]::text",
+         "rating_count": "span[itemprop=ratingCount]::text",
+         "metascore": ".metacriticScore span::text",
 
-        css_rules = {
-            'genres': '.subtext a[href*=genres]::text',
-            'director': 'h4:contains(Director) ~ a[href*=name]::text',
-            'writers': 'h4:contains(Writer) ~ a[href*=name]::text',
-            'stars': 'h4:contains(Star) ~ a[href*=name]::text'
-        }
+         # if you provide a list with additional functions,
+         # they are considered as field processor function
+         "title": ["h1::text", str.strip],
+         "time": [".subtext time::text", process_time],
 
-        field_processors = {
-            'time': process_time
-        }
+         # the following four fules is for getting all matching values
+         # the rule starts with [ and ends with ] comparing to normal rules
+         "genres": "[.subtext a[href*=genres]::text]",
+         "director": "[h4:contains(Director) ~ a[href*=name]::text]",
+         "writers": "[h4:contains(Writer) ~ a[href*=name]::text]",
+         "stars": "[h4:contains(Star) ~ a[href*=name]::text]",
+      }
 
         def custom_process(self, content):
             pprint(content)

@@ -27,9 +27,10 @@ Feature
 
 * Write your crawler in one Python script with asyncio
 * Schedule task with priority, fingerprint, exetime, recrawl...
-* Middleware: add handlers before or after tasks
+* Middleware: add handlers before or after task's execution
 * Simple shortcuts to speed up scripting
 * Parse html conveniently with `Parsel <https://parsel.readthedocs.io/en/latest/>`_
+* Parse with rules and chained processors
 * Support JavaScript/browser-automation with `pyppeteer <https://github.com/miyakogi/pyppeteer>`_
 * Stop and Resume: crawl periodically and persistently
 * Distributed work support with Redis
@@ -47,6 +48,7 @@ To install, simply use `pipenv <http://pipenv.org/>`_ (or pip):
    $ pipenv install uvloop      #(only Linux/macOS, for faster asyncio event loop)
    $ pipenv install aioredis    #(if you need Redis support)
    $ pipenv install motor       #(if you need MongoDB support)
+   $ pipenv install aiofiles    #(if you need FileRequest)
 
 
 

@@ -65,15 +65,18 @@ Scrape imdb.com
       log = True
       css = {
          # just some normal css rules
+         # see Parsel for detailed information
          "date": ".subtext a[href*=releaseinfo]::text",
          "time": ".subtext time::text",
          "rating": "span[itemprop=ratingValue]::text",
          "rating_count": "span[itemprop=ratingCount]::text",
          "metascore": ".metacriticScore span::text",
+
          # if you provide a list with additional functions,
          # they are considered as field processor function
          "title": ["h1::text", str.strip],
-         # the following four fules is get all matching values
+
+         # the following four fules is for getting all matching values
          # the rule starts with [ and ends with ] comparing to normal rules
          "genres": "[.subtext a[href*=genres]::text]",
          "director": "[h4:contains(Director) ~ a[href*=name]::text]",
