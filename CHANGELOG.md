@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.0](https://github.com/wooddance/aCrawler/compare/v0.0.9...v0.1.0) (2019-08-23)
+
+
+### Bug Fixes
+
+* **examples:** update for change of item parsing rules ([4eea6ac](https://github.com/wooddance/aCrawler/commit/4eea6ac))
+* **handler:** event as instance'attr ([6d3164d](https://github.com/wooddance/aCrawler/commit/6d3164d))
+* **item:** clean processors ([a90470a](https://github.com/wooddance/aCrawler/commit/a90470a))
+* **item:** clean rules ([fe48ef8](https://github.com/wooddance/aCrawler/commit/fe48ef8))
+* **task:** optional ancestor ([0a2df10](https://github.com/wooddance/aCrawler/commit/0a2df10))
+
+
+### Features
+
+* **counter:** accept flag param ([adfeb10](https://github.com/wooddance/aCrawler/commit/adfeb10))
+* **counter:** count requests in progress ([3ae9753](https://github.com/wooddance/aCrawler/commit/3ae9753))
+* **counter:** delay in counter ([cd734ec](https://github.com/wooddance/aCrawler/commit/cd734ec))
+* **crawler:** check import ([ab300b2](https://github.com/wooddance/aCrawler/commit/ab300b2))
+* **crawler:** name attr ([35d62a2](https://github.com/wooddance/aCrawler/commit/35d62a2))
+* **crawler:** pickle all types of task ([53e087f](https://github.com/wooddance/aCrawler/commit/53e087f))
+* **http:** picklable response ([93c74de](https://github.com/wooddance/aCrawler/commit/93c74de))
+* **item:** picklable ([fc16e41](https://github.com/wooddance/aCrawler/commit/fc16e41))
+* **item:** support dropField ([49f1d2c](https://github.com/wooddance/aCrawler/commit/49f1d2c))
+* **item:** support inline rule ([e864a4a](https://github.com/wooddance/aCrawler/commit/e864a4a))
+* **response:** paginate & follow ([c66d0d3](https://github.com/wooddance/aCrawler/commit/c66d0d3))
+
+
+
 ### [0.0.9](https://github.com/wooddance/aCrawler/compare/v0.0.8...v0.0.9) (2019-07-28)
 
 
