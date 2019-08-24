@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/wooddance/aCrawler/compare/v0.1.1...v0.1.3) (2019-08-24)
+
+
+### Tests
+
+* queue ([a0a436e](https://github.com/wooddance/aCrawler/commit/a0a436e))
+* request ([5dc44a4](https://github.com/wooddance/aCrawler/commit/5dc44a4))
+* scheduler ([bdec6d2](https://github.com/wooddance/aCrawler/commit/bdec6d2))
+
+
+
 ### [0.1.1](https://github.com/wooddance/aCrawler/compare/v0.1.0...v0.1.1) (2019-08-23)
 
 
