@@ -245,8 +245,6 @@ class ItemToMongo(Handler):
         self.db = self.client[self.db_name]
         self.col = self.db[self.col_name]
         logger.info(f"Connecting to MongoDB... {self.col}")
-        if self.primary_key:
-            await self.col.create_index(self.primary_key)
 
     async def handle_after(self, item):
         if self.primary_key:
