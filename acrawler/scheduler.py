@@ -1,7 +1,8 @@
 import asyncio
 import logging
-import pickle
 import time
+
+import dill as pickle
 
 from acrawler.utils import check_import
 

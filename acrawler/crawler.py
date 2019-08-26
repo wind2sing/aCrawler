@@ -1,6 +1,6 @@
 import asyncio
 import logging
-import pickle
+import dill as pickle
 import signal
 import sys
 import time
