@@ -3,7 +3,6 @@ import re
 from datetime import datetime
 from collections import MutableMapping
 from typing import AsyncGenerator, Callable
-from pprint import pformat
 
 from parsel import Selector
 
@@ -88,7 +87,6 @@ class Item(Task, MutableMapping):
     def custom_process(self, content):
         """can be rewritten for customed futhur processing of the item.
         """
-        pass
 
     def __getstate__(self):
         state = super().__getstate__()
@@ -292,7 +290,7 @@ class Field:
                 if rule(target):
                     raise DropFieldError
             elif rkey == "first":
-                if len(target) > 0:
+                if isinstance(target, list) and target:
                     target = target[0]
                 else:
                     target = None
