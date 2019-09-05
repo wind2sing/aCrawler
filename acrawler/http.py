@@ -383,28 +383,32 @@ class Response(Task):
             raise ValueError("urljoin receive bad argument{}".format(a))
         return urljoin(self.url_str, url)
 
-    def paginate(self, css, limit=0):
-        """ yield requests with same pattern by following links.
+    def paginate(self, css: str, limit: int = 0, **kwargs):
+        """ Follow links and yield requests with same callback functions.
+        Additional keyword arguments will be used for constructing requests.
 
         Args:
             css (str): css selector
+            limit: max number of links to follow.
         """
         count = 0
         for url in self.sel.css(css).getall():
-            request = Request(url)
-            request.callbacks = self.request.callbacks
+            request = Request(url, **kwargs)
+            for cb in self.request.callbacks:
+                request.add_callback(cb)
             yield request
             count += 1
             if limit and count >= limit:
                 break
 
     def follow(self, css, callback=None, limit=0, **kwargs):
-        """ yield requests in current page.
-        Additional keyword arguments will be used for constructing request.
+        """ Yield requests in current page using css selector.
+        Additional keyword arguments will be used for constructing requests.
 
         Args:
             css (str): css selector
             callback (callable, optional):  Defaults to None.
+            limit: max number of links to follow.
         """
         count = 0
         for url in self.sel.css(css).getall():
@@ -414,8 +418,9 @@ class Response(Task):
             if limit and count >= limit:
                 break
 
-    def spawn(self, css, item):
-        """ yield items in current page
+    def spawn(self, css, item, **kwargs):
+        """ Yield items in current page
+        Additional keyword arguments will be used for constructing items.
 
         Args:
             css (str): css divider
@@ -423,7 +428,7 @@ class Response(Task):
         """
 
         for sel in self.sel.css(css):
-            yield item(sel)
+            yield item(sel, **kwargs)
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
