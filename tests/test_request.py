@@ -1,6 +1,8 @@
-from acrawler.http import Request
-import pytest
 import pickle
+
+import pytest
+
+from acrawler.http import Request
 
 
 def test_fp():
@@ -30,7 +32,6 @@ def test_diff_fp():
 
 @pytest.mark.asyncio
 async def test_send():
-
     rq1 = Request("https://httpbin.org/json")
     resp1 = await rq1.send()
     assert resp1.json == {
@@ -69,4 +70,3 @@ async def test_dumps():
     rq1 = Request("https://httpbin.org/json")
     await rq1.send()
     assert pickle.dumps(rq1)
-
