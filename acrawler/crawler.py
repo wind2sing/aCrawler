@@ -494,7 +494,7 @@ class Crawler(object):
             async for task in handler.handle(3):
                 await self.add_task(task)
 
-    async def ashutdown(self, signal=None):
+    async def ashutdown(self, sig=None):
         # shutdown method.
         #
         # - cancel all Request workers
@@ -525,7 +525,7 @@ class Crawler(object):
             await self._log_status()
             await self._on_close()
             await self._persist_save()
-            if signal:
+            if sig:
                 self.run_task.cancel()
 
             logger.debug("Shutdown crawler gracefully!")
@@ -535,6 +535,10 @@ class Crawler(object):
             logger.warning("Errors during shutdown: {}".format(e))
             logger.error(traceback.format_exc())
             self.loop.stop()
+        finally:
+            signals = (signal.SIGTERM, signal.SIGINT)
+            for s in signals:
+                self.loop.remove_signal_handler(s)
 
     async def _persist_load(self):
         if self.persistent and not self.redis_enable:
