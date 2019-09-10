@@ -452,11 +452,14 @@ class Crawler(object):
         for kv in self.middleware_config.items():
             name = kv[0]
             key = kv[1]
-            if key != 0:
+            if key:
                 p, h = name.rsplit(".", 1)
                 mod = import_module(p)
                 mcls = getattr(mod, h)
-                mcls.priority = key
+                if key is True:
+                    pass
+                else:
+                    mcls.priority = key
                 self.middleware.append_handler_cls(mcls)
 
     async def next_requests(self):
