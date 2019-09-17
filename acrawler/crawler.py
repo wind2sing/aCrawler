@@ -381,7 +381,7 @@ class Crawler(object):
         # log three types of config
         level = self.config.get("LOG_LEVEL", "INFO")
         to_file = self.config.get("LOG_TO_FILE", None)
-        fmt = self.config.get("LOGGER_FMT", "%(name)-20s%(levelname)-8s %(message)s")
+        fmt = self.config.get("LOGGER_FMT", "%(asctime)s %(name)-20s%(levelname)-8s %(message)s")
         datefmt = self.config.get("LOGGER_DATE_FMT", "%Y-%m-%d %H:%M:%S")
         LOGGER = logging.getLogger("acrawler")
 
