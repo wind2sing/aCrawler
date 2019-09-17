@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/wooddance/aCrawler/compare/v0.1.3...v0.1.4) (2019-09-17)
+
+
+### Bug Fixes
+
+* **crawler:** remove signal handlers after shutdown ([2cf1bff](https://github.com/wooddance/aCrawler/commit/2cf1bff))
+* **handlers:** ToMongo won't create index ([73cc390](https://github.com/wooddance/aCrawler/commit/73cc390))
+* **log:** change logger formatter ([30e5068](https://github.com/wooddance/aCrawler/commit/30e5068))
+
+
+### Features
+
+* **cralwer:** middleware with priority True ([b30f836](https://github.com/wooddance/aCrawler/commit/b30f836))
+* **crawler:** use dill for pickling ([b3228ad](https://github.com/wooddance/aCrawler/commit/b3228ad))
+* **response:** paginate accepts keyword arguments ([fcd59cc](https://github.com/wooddance/aCrawler/commit/fcd59cc))
+
+
+
 ### [0.1.3](https://github.com/wooddance/aCrawler/compare/v0.1.1...v0.1.3) (2019-08-24)
 
 

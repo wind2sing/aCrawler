@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 NAME = "acrawler"
@@ -6,7 +6,7 @@ DESCRIPTION = "A simple web-crawling framework, based on aiohttp."
 URL = "https://github.com/wooddance/aCrawler"
 EMAIL = "zireael.me@gmail.com"
 AUTHOR = "wooddance"
-VERSION = "0.1.3"
+VERSION = "0.1.4"
 REQUIRED = ["aiohttp", "parsel", "cchardet", "dill"]
 
 setup(
