@@ -218,6 +218,7 @@ class Crawler(object):
 
         self.middleware.crawler = self
         self._add_default_middleware_handler_cls()
+        self.config_logger()
 
     def run(self):
         """Core method of the crawler. Usually called to start crawling."""
@@ -234,7 +235,6 @@ class Crawler(object):
     async def arun(self):
         # Wraps main works and wait until all tasks finish.
         try:
-            self.config_logger()
             await self._persist_load()
             logger.debug("Checking middleware's handlers...")
             logger.info(self.middleware)
@@ -384,6 +384,7 @@ class Crawler(object):
         fmt = self.config.get("LOGGER_FMT", "%(asctime)s %(name)-20s%(levelname)-8s %(message)s")
         datefmt = self.config.get("LOGGER_DATE_FMT", "%Y-%m-%d %H:%M:%S")
         LOGGER = logging.getLogger("acrawler")
+        LOGGER.handlers = []
 
         if to_file:
             handler = logging.FileHandler(to_file)
