@@ -10,11 +10,11 @@ import acrawler
 from acrawler.utils import to_asyncgen
 
 _Function = Callable
-_Task = 'acrawler.task.Task'
-_Request = 'acrawler.http.Request'
-_Response = 'acrawler.http.Response'
-_Crawler = 'acrawler.crawler.Crawler'
-_TaskGenerator = AsyncGenerator['Task', None]
+_Task = "acrawler.task.Task"
+_Request = "acrawler.http.Request"
+_Response = "acrawler.http.Response"
+_Crawler = "acrawler.crawler.Crawler"
+_TaskGenerator = AsyncGenerator["Task", None]
 logger = logging.getLogger(__name__)
 
 
@@ -23,13 +23,24 @@ class HandlerMetaClass(type):
     def __prepare__(metacls, name, bases, **kwargs):
         return super().__prepare__(name, bases, **kwargs)
 
-    def __new__(metacls, name, bases, namespace, family=None, position=0, priority=None, func=None, **kwargs):
+    def __new__(
+        metacls,
+        name,
+        bases,
+        namespace,
+        family=None,
+        position=0,
+        priority=None,
+        func=None,
+        **kwargs
+    ):
         if family:
-            namespace['family'] = family
+            namespace["family"] = family
         if priority:
-            namespace['priority'] = priority
-        p_d = ['on_start', 'handle_before', 'handle_after', 'on_close']
+            namespace["priority"] = priority
+        p_d = ["on_start", "handle_before", "handle_after", "on_close"]
         if func:
+
             def meth(handler, task):
                 return func(task)
 
@@ -42,7 +53,7 @@ class Handler(metaclass=HandlerMetaClass):
 
     """
 
-    family: str = '_Default'
+    family: str = "_Default"
     """Associated with `Task`'s families. One handler only has one family. If a 
     handler's family is in a task's families, this handler matches the task and then 
     somes fuctions will be called before and after the task.
@@ -53,13 +64,14 @@ class Handler(metaclass=HandlerMetaClass):
     A handler with priority 0 will be disabled.
     """
 
-    def __init__(self,
-                 family: str = None,
-                 func_before: _Function = None,
-                 func_after: _Function = None,
-                 func_start: _Function = None,
-                 func_close: _Function = None,
-                 ):
+    def __init__(
+        self,
+        family: str = None,
+        func_before: _Function = None,
+        func_after: _Function = None,
+        func_start: _Function = None,
+        func_close: _Function = None,
+    ):
         if family:
             self.family = family
 
@@ -121,15 +133,25 @@ class Handler(metaclass=HandlerMetaClass):
         return self.priority > other.priority
 
     def __repr__(self):
-        return '{} (family:{} priority:{})'.format(self.__class__.__name__, self.family, self.priority)
+        return "{} (family:{} priority:{})".format(
+            self.__class__.__name__, self.family, self.priority
+        )
 
 
 class HandlerList(UserList):
+    def __init__(self):
+        super().__init__()
+        self._names = set()
+
     def append(self, item):
-        bisect.insort(self.data, item)
+        if item.__class__.__name__ not in self._names:
+            bisect.insort(self.data, item)
+            self._names.add(item.__class__.__name__)
 
     def insert(self, item):
-        bisect.insort(self.data, item)
+        if item.__class__.__name__ not in self._names:
+            bisect.insort(self.data, item)
+            self._names.add(item.__class__.__name__)
 
 
 class SingletonMetaclass(type):
@@ -139,8 +161,7 @@ class SingletonMetaclass(type):
 
     def __call__(self, *args, **kwargs):
         if self.__instance is None:
-            self.__instance = super(
-                SingletonMetaclass, self).__call__(*args, **kwargs)
+            self.__instance = super(SingletonMetaclass, self).__call__(*args, **kwargs)
             return self.__instance
         else:
             return self.__instance
@@ -184,6 +205,7 @@ class _Middleware(metaclass=SingletonMetaclass):
                 3 -  :meth:`Handler.on_close`
 
         """
+
         @functools.singledispatch
         def decorator(target):
             return target
@@ -202,19 +224,27 @@ class _Middleware(metaclass=SingletonMetaclass):
 
         return decorator
 
-    def append_func(self, func, family: str = None, position: int = None, priority: int = None):
+    def append_func(
+        self, func, family: str = None, position: int = None, priority: int = None
+    ):
         if family is None:
-            family = '_Default'
+            family = "_Default"
         if priority is None:
             priority = 100
         if position is None:
             position = 2
         if not position in (0, 1, 2, 3):
-            raise ValueError(
-                'Position for function should be a valid value: 0/1/2/3!')
+            raise ValueError("Position for function should be a valid value: 0/1/2/3!")
         else:
             hcls = HandlerMetaClass(
-                'ShortHandler', (Handler,), {}, family=family, position=position, priority=priority, func=func)
+                "ShortHandler",
+                (Handler,),
+                {},
+                family=family,
+                position=position,
+                priority=priority,
+                func=func,
+            )
             self.append_handler_cls(hcls)
         return func
 
