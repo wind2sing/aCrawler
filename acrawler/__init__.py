@@ -12,3 +12,5 @@ from .exceptions import (
     SkipTaskImmediatelyError,
     ReScheduleImmediatelyError,
 )
+
+from .chain import ChainCrawler, ChainRequest, ChainItem

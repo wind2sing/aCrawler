@@ -418,7 +418,7 @@ class Response(Task):
             if limit and count >= limit:
                 break
 
-    def spawn(self, css, item, **kwargs):
+    def spawn(self, item, css=None, **kwargs):
         """ Yield items in current page
         Additional keyword arguments will be used for constructing items.
 
@@ -426,9 +426,11 @@ class Response(Task):
             css (str): css divider
             item (ParselItem): item class
         """
-
-        for sel in self.sel.css(css):
-            yield item(sel, **kwargs)
+        if css:
+            for sel in self.sel.css(css):
+                yield item(sel, **kwargs)
+        else:
+            yield item(self.sel, **kwargs)
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):

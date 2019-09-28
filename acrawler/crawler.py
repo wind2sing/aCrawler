@@ -188,7 +188,7 @@ class Crawler(object):
 
     name = None
 
-    def __init__(self):
+    def __init__(self, config:dict=None, middleware_config:dict=None, request_config:dict=None):
         """Initialization will:
         - load setting and configs
         - create scheduler/counter (may load from file)
@@ -201,6 +201,9 @@ class Crawler(object):
 
         self.loop = asyncio.get_event_loop()
 
+        self.config = config or self.config
+        self.middleware_config = middleware_config or self.middleware_config
+        self.request_config = request_config or self.request_config
         self._form_config()
 
         self.counter: Counter = None
