@@ -18,7 +18,8 @@ class ChainCrawler:
         self._crawler = Crawler(config, middleware_config, request_config)
 
     def add(self, task):
-        self._crawler.add_task_sync(task.to_vanilla())
+        for t in task.to_vanilla():
+            self._crawler.add_task_sync(t)
         return self
 
     def run(self):
@@ -28,6 +29,7 @@ class ChainCrawler:
 
 class ChainRequest:
     def __init__(self, family=None):
+        self._urls = []
         self._kws = {}
         self._kws["family"] = family
         self._kws["method"] = "GET"
@@ -38,13 +40,16 @@ class ChainRequest:
         m.update(meta)
         return self
 
-    def request(self, url, method="GET"):
+    def request(self, urls, method="GET"):
         self._kws["method"] = "GET"
-        self._kws["url"] = url
+        if isinstance(urls, list):
+            self._urls.extend(urls)
+        else:
+            self._urls.append(urls)
         return self
 
-    def get(self, url):
-        return self.request(url)
+    def get(self, urls):
+        return self.request(urls)
 
     def callback(self, func):
         self._kws["callback"].append(func)
@@ -54,9 +59,9 @@ class ChainRequest:
         def fn(resp: Response):
             if css:
                 for sel in resp.sel.css(css):
-                    yield item.to_vanilla(sel)
+                    yield from item.to_vanilla(sel)
             else:
-                yield item.to_vanilla(resp.sel)
+                yield from item.to_vanilla(resp.sel)
 
         self._kws["callback"].append(fn)
         return self
@@ -64,14 +69,20 @@ class ChainRequest:
     def cb(self, func):
         return self.callback(func)
 
-    def follow(self, css: str, limit: int = 0, **kwargs):
+    def follow(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
         req = ChainRequest()
+        if pass_meta:
+            req.meta(self._kws.get("meta", {}))
+            if "meta" in kwargs:
+                req.meta(kwargs.pop("meta"))
 
         def fn(resp: Response):
             count = 0
             for url in resp.sel.css(css).getall():
-                request = req.get(url).to_vanilla()
-                yield request
+                m = req._kws.pop("meta", {})
+                if resp.meta:
+                    m.update(resp.meta)
+                yield Request(url, meta=m, **req._kws, **kwargs)
                 count += 1
                 if limit and count >= limit:
                     break
@@ -79,8 +90,8 @@ class ChainRequest:
         self._kws["callback"].append(fn)
         return req
 
-    def paginate(self, css: str, limit: int = 0, **kwargs):
-        req = self.follow(css, limit)
+    def paginate(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
+        req = self.follow(css, limit, pass_meta)
         # while paginating, these requests share same callback list
         req._kws["callback"] = self._kws["callback"]
         return req
@@ -93,5 +104,44 @@ class ChainRequest:
         return self
 
     def to_vanilla(self, **kwargs):
-        return Request(**self._kws, **kwargs)
+        for url in self._urls:
+            yield Request(url, **self._kws, **kwargs)
+
+    def bind(self):
+        """ decorator, bind callback function. """
+
+        def decorator(func):
+            self._kws["callback"].append(func)
+            return func
+
+        return decorator
+
+
+class ChainItem:
+    def __init__(self, family=None):
+        self._kws = {}
+        self._kws["family"] = family
+        self._kws["css"] = {}
+        self._kws["xpath"] = {}
+        self._kws["re"] = {}
+
+    def extra(self, extra: dict):
+        m = self._kws.setdefault("extra", {})
+        m.update(extra)
+        return self
+
+    def css(self, rules: dict):
+        self._kws["css"].update(rules)
+        return self
+
+    def xpath(self, rules: dict):
+        self._kws["xpath"].update(rules)
+        return self
+
+    def re(self, rules: dict):
+        self._kws["re"].update(rules)
+        return self
+
+    def to_vanilla(self, sel, **kwargs):
+        yield ParselItem(sel, **self._kws, **kwargs)
 

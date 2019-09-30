@@ -346,8 +346,25 @@ class ParselItem(Item):
 
     _bindmap = {}
 
-    def __init__(self, selector, extra=None, **kwargs):
+    def __init__(
+        self,
+        selector,
+        extra=None,
+        css=None,
+        xpath=None,
+        re=None,
+        inline=None,
+        inline_divider=None,
+        bindmap=None,
+        **kwargs,
+    ):
         super().__init__(extra=extra, **kwargs)
+        self.css = css or self.css
+        self.xpath = xpath or self.xpath
+        self.re = re or self.re
+        self.inline = inline or self.inline
+        self.inline_divider = inline_divider or self.inline_divider
+
         self.sel = selector
         self.default_rules = self.default
 
