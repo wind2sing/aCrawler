@@ -1,12 +1,9 @@
 import bisect
-import functools
 import logging
-import types
 from collections import UserList
-from inspect import iscoroutinefunction
-from typing import AsyncGenerator, Callable, List
+from inspect import isclass, isgeneratorfunction
+from typing import AsyncGenerator, Callable
 
-import acrawler
 from acrawler.utils import to_asyncgen
 
 _Function = Callable
@@ -40,9 +37,15 @@ class HandlerMetaClass(type):
             namespace["priority"] = priority
         p_d = ["on_start", "handle_before", "handle_after", "on_close"]
         if func:
+            if isgeneratorfunction(func):
 
-            def meth(handler, task):
-                return func(task)
+                def meth(handler, task):
+                    yield from func(task)
+
+            else:
+
+                def meth(handler, task):
+                    return func(task)
 
             namespace[p_d[position]] = meth
         return super().__new__(metacls, name, bases, namespace)
@@ -94,22 +97,18 @@ class Handler(metaclass=HandlerMetaClass):
         """When Crawler starts(before :meth:`~acrawler.crawler.Crawler.start_requests`), 
         this method will be called.
         """
-        pass
 
     async def handle_before(self, task: _Task):
         """Then function called before the execution of the task.
         """
-        pass
 
     async def handle_after(self, task: _Task):
         """Then function called after the execution of the task.
         """
-        pass
 
     async def on_close(self):
         """When Crawler closes, this method will be called.
         """
-        pass
 
     async def handle(self, position: int, task: _Task = None) -> _TaskGenerator:
         if position == 0 or position == 3:
@@ -206,21 +205,12 @@ class _Middleware(metaclass=SingletonMetaclass):
 
         """
 
-        @functools.singledispatch
         def decorator(target):
+            if isclass(target):
+                self.append_handler_cls(target, family, priority)
+            else:
+                self.append_func(target, family, position, priority)
             return target
-
-        @decorator.register(types.FunctionType)
-        def _(func):
-            nonlocal priority
-            nonlocal family
-            self.append_func(func, family, position, priority)
-            return func
-
-        @decorator.register(HandlerMetaClass)
-        def _(cls):
-            self.append_handler_cls(cls, family, priority)
-            return cls
 
         return decorator
 
