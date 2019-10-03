@@ -1,7 +1,12 @@
 import bisect
 import logging
 from collections import UserList
-from inspect import isclass, isgeneratorfunction
+from inspect import (
+    isclass,
+    isgeneratorfunction,
+    isasyncgenfunction,
+    iscoroutinefunction,
+)
 from typing import AsyncGenerator, Callable
 
 from acrawler.utils import to_asyncgen
@@ -41,6 +46,17 @@ class HandlerMetaClass(type):
 
                 def meth(handler, task):
                     yield from func(task)
+
+            elif iscoroutinefunction(func):
+
+                async def meth(handler, task):
+                    return await func(task)
+
+            elif isasyncgenfunction(func):
+
+                async def meth(handler, task):
+                    async for t in func(task):
+                        yield t
 
             else:
 
