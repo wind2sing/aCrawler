@@ -78,7 +78,7 @@ class Handler(metaclass=HandlerMetaClass):
     somes fuctions will be called before and after the task.
     """
 
-    priority: int = 100
+    priority: int = 500
     """A handler with higher priority will be checked with task earlier.
     A handler with priority 0 will be disabled.
     """
@@ -233,17 +233,28 @@ class _Middleware(metaclass=SingletonMetaclass):
     def append_func(
         self, func, family: str = None, position: int = None, priority: int = None
     ):
+        """constructor a handler class from given function and register it.
+
+        :param func:
+        :type func: [type]
+        :param family: , defaults to None
+        :type family: str, optional
+        :param position: 0, 1, 2, 3, defaults to None
+        :type position: int, optional
+        :param priority: , defaults to None
+        :type priority: int, optional
+        """
         if family is None:
             family = "_Default"
         if priority is None:
-            priority = 100
+            priority = 500
         if position is None:
             position = 2
         if not position in (0, 1, 2, 3):
             raise ValueError("Position for function should be a valid value: 0/1/2/3!")
         else:
             hcls = HandlerMetaClass(
-                "ShortHandler",
+                func.__name__,
                 (Handler,),
                 {},
                 family=family,
