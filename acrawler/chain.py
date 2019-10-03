@@ -30,18 +30,18 @@ class ChainCrawler:
 class ChainRequest:
     def __init__(self, family=None):
         self._urls = []
-        self._kws = {}
-        self._kws["family"] = family
-        self._kws["method"] = "GET"
-        self._kws["callback"] = []
+        self.kws = {}
+        self.kws["family"] = family
+        self.kws["method"] = "GET"
+        self.kws["callback"] = []
 
     def meta(self, meta: dict):
-        m = self._kws.setdefault("meta", {})
+        m = self.kws.setdefault("meta", {})
         m.update(meta)
         return self
 
     def request(self, urls, method="GET"):
-        self._kws["method"] = "GET"
+        self.kws["method"] = "GET"
         if isinstance(urls, list):
             self._urls.extend(urls)
         else:
@@ -51,8 +51,8 @@ class ChainRequest:
     def get(self, urls):
         return self.request(urls)
 
-    def callback(self, func):
-        self._kws["callback"].append(func)
+    def add_callback(self, func):
+        self.kws["callback"].append(func)
         return self
 
     def spawn(self, item, css=None):
@@ -63,55 +63,52 @@ class ChainRequest:
             else:
                 yield from item.to_vanilla(resp.sel)
 
-        self._kws["callback"].append(fn)
+        self.kws["callback"].append(fn)
         return self
-
-    def cb(self, func):
-        return self.callback(func)
 
     def follow(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
         req = ChainRequest()
         if pass_meta:
-            req.meta(self._kws.get("meta", {}))
+            req.meta(self.kws.get("meta", {}))
             if "meta" in kwargs:
                 req.meta(kwargs.pop("meta"))
 
         def fn(resp: Response):
             count = 0
             for url in resp.sel.css(css).getall():
-                m = req._kws.pop("meta", {})
+                m = req.kws.pop("meta", {})
                 if resp.meta:
                     m.update(resp.meta)
-                yield Request(url, meta=m, **req._kws, **kwargs)
+                yield Request(url, meta=m, **req.kws, **kwargs)
                 count += 1
                 if limit and count >= limit:
                     break
 
-        self._kws["callback"].append(fn)
+        self.kws["callback"].append(fn)
         return req
 
     def paginate(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
         req = self.follow(css, limit, pass_meta)
         # while paginating, these requests share same callback list
-        req._kws["callback"] = self._kws["callback"]
+        req.kws["callback"] = self.kws["callback"]
         return req
 
     def debug(self, css: str):
         def fn(resp: Response):
             print(resp.sel.css(css).get())
 
-        self._kws["callback"].append(fn)
+        self.kws["callback"].append(fn)
         return self
 
     def to_vanilla(self, **kwargs):
         for url in self._urls:
-            yield Request(url, **self._kws, **kwargs)
+            yield Request(url, **self.kws, **kwargs)
 
-    def bind(self):
+    def callback(self):
         """ decorator, bind callback function. """
 
         def decorator(func):
-            self._kws["callback"].append(func)
+            self.kws["callback"].append(func)
             return func
 
         return decorator
@@ -119,29 +116,30 @@ class ChainRequest:
 
 class ChainItem:
     def __init__(self, family=None):
-        self._kws = {}
-        self._kws["family"] = family
-        self._kws["css"] = {}
-        self._kws["xpath"] = {}
-        self._kws["re"] = {}
+        self.kws = {}
+        self.kws["family"] = family
+        self.kws["css"] = {}
+        self.kws["xpath"] = {}
+        self.kws["re"] = {}
 
     def extra(self, extra: dict):
-        m = self._kws.setdefault("extra", {})
+        m = self.kws.setdefault("extra", {})
         m.update(extra)
         return self
 
     def css(self, rules: dict):
-        self._kws["css"].update(rules)
+        self.kws["css"].update(rules)
         return self
 
     def xpath(self, rules: dict):
-        self._kws["xpath"].update(rules)
+        self.kws["xpath"].update(rules)
         return self
 
     def re(self, rules: dict):
-        self._kws["re"].update(rules)
+        self.kws["re"].update(rules)
         return self
 
     def to_vanilla(self, sel, **kwargs):
-        yield ParselItem(sel, **self._kws, **kwargs)
+        yield ParselItem(sel, **self.kws, **kwargs)
+
 
