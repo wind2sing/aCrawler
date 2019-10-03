@@ -477,26 +477,13 @@ class FileRequest(Request):
     """ A derived Request to download files.
     """
 
-    file_dir = Path.cwd()
-    """Directly set the location the location where the file will save.
-    """
-
-    file_dir_key = "_fdir"
-    """It will try to call `self.meta.get(file_dir_key)` to get the location where the file will save.
-    """
-
-    file_name = ""
-    """Directly set the file name. Otherwise name from url will be used as filename.
-    """
-
-    file_name_key = "_fname"
-    """It will try to call `self.meta.get(file_name_key)` to get the file name to save.
-    """
-
     def __init__(
         self,
         url,
         *args,
+        fdir=None,
+        fname=None,
+        skip_if_exists=False,
         callback=None,
         method="GET",
         request_config=None,
@@ -508,7 +495,6 @@ class FileRequest(Request):
     ):
         if not callback:
             callback = file_save_callback
-
         super().__init__(
             url,
             callback=callback,
@@ -521,20 +507,24 @@ class FileRequest(Request):
             *args,
             **kwargs,
         )
+        self.skip_if_exists = skip_if_exists
 
-    async def _execute(self, **kwargs):
-        if self.file_dir_key in self.meta:
-            self.file_dir = Path(self.meta[self.file_dir_key])
+        self.file_dir = Path(fdir) if fdir else Path.cwd()
+        self.file_dir.mkdir(parents=True, exist_ok=True)
 
         self.file_name = self.url_str.split("/")[-1]
         ext = self.file_name.split(".")[-1]
-        if self.file_name_key in self.meta:
-            self.file_name = self.meta[self.file_name_key] + "." + ext
+        if fname:
+            self.file_name = fname + "." + ext
 
+    async def _execute(self, **kwargs):
         self.meta["where"] = self.file_dir / self.file_name
 
-        async for task in super()._execute(**kwargs):
-            yield task
+        if self.skip_if_exists and self.meta["where"].exists():
+            yield None
+        else:
+            async for task in super()._execute(**kwargs):
+                yield task
 
 
 class BrowserRequest(Request):
