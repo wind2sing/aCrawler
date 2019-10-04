@@ -403,12 +403,12 @@ class ParselItem(Item):
         raise DropFieldError()
 
     @classmethod
-    def bind(cls, field: str = None, map_=False):
+    def bind(cls, field: str = None, map=False):
         """ Bind field processor. """
 
         def decorator(func):
             nonlocal field
-            nonlocal map_
+            nonlocal map
             if not field:
                 func_name = func.__name__
                 if func_name.startswith("process_"):
@@ -421,7 +421,7 @@ class ParselItem(Item):
             lis = cls._bindmap.setdefault(field, [])
             if not isinstance(lis, list):
                 lis = [lis]
-            if map_:
+            if map:
                 lis.append(Processors.map(func))
             else:
                 lis.append(func)

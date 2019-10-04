@@ -1,6 +1,8 @@
 from acrawler.crawler import Crawler
 from acrawler.http import Request, Response
 from acrawler.item import ParselItem
+from acrawler.utils import check_import
+from acrawler.middleware import register
 
 
 class ChainCrawler:
@@ -16,6 +18,11 @@ class ChainCrawler:
         config["MAX_REQUESTS"] = concurrency
         config["DOWNLOAD_DELAY"] = delay
         self._crawler = Crawler(config, middleware_config, request_config)
+
+    def use(self, handler_cls, config: dict = None):
+        self._crawler.config.update(config or {})
+        register()(handler_cls)
+        return self
 
     def add(self, task):
         for t in task.to_vanilla():
@@ -65,7 +72,7 @@ class ChainRequest:
                 if divider:
                     for sel in resp.sel.css(divider):
                         yield from item.to_vanilla(sel, meta=resp.meta)
-            else:
+                else:
                     yield from item.to_vanilla(resp.sel, meta=resp.meta)
 
         self.kws["callback"].append(fn)
@@ -125,10 +132,15 @@ class ChainItem:
         self.kws["css"] = {}
         self.kws["xpath"] = {}
         self.kws["re"] = {}
+        self.primary_family = family or "Item"
 
     def extra(self, extra: dict):
         m = self.kws.setdefault("extra", {})
         m.update(extra)
+        return self
+
+    def extra_from_meta(self):
+        self.kws["extra_from_meta"] = True
         return self
 
     def css(self, rules: dict):
@@ -146,4 +158,34 @@ class ChainItem:
     def to_vanilla(self, sel, **kwargs):
         yield ParselItem(sel, **self.kws, **kwargs)
 
+    def register(self, position: int = None, priority: int = None):
+        """ decorator, register a handler function. """
+
+        family = self.primary_family
+        return register(family, position, priority)
+
+    def to_mongo(
+        self, db, col, key=None, priority=None, address="mongodb://localhost:27017"
+    ):
+        mo = check_import("motor.motor_asyncio")
+        mongo_client = mo.AsyncIOMotorClient(address)
+        mongo_db = mongo_client[db]
+        mongo_col = mongo_db[col]
+
+        async def quick_to_mongo(item):
+            if key:
+                await mongo_col.update_many(
+                    {key: item[key]}, {"$set": item.content}, upsert=True
+                )
+            else:
+                await mongo_col.insert_one(item.content)
+
+        register(self.primary_family, priority=priority)(quick_to_mongo)
+        return self
+
+    def debug(self, priority=100):
+        def quick_debug_item(item):
+            print(item)
+
+        register(self.primary_family, priority=priority)(quick_debug_item)
 
