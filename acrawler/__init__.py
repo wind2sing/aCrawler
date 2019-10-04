@@ -14,3 +14,6 @@ from .exceptions import (
 )
 
 from .chain import ChainCrawler, ChainRequest, ChainItem
+
+# alias
+x = Processors

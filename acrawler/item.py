@@ -1,6 +1,4 @@
 import logging
-import re
-from datetime import datetime
 from collections import MutableMapping
 from typing import AsyncGenerator, Callable
 
@@ -9,6 +7,7 @@ from parsel import Selector
 from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 from acrawler.task import Task
 from acrawler.utils import to_asyncgen
+from acrawler.processors import Processors
 
 _Function = Callable
 _TaskGenerator = AsyncGenerator[Task, None]
@@ -28,13 +27,15 @@ class Item(Task, MutableMapping):
     log = False
     store = False
 
-    def __init__(self, extra: dict = None, **kwargs):
+    def __init__(self, extra: dict = None, extra_from_meta=False, **kwargs):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
             dont_filter=dont_filter, ignore_exception=ignore_exception, **kwargs
         )
         self.extra = extra or {}
+        if extra_from_meta:
+            self.extra.update(self.meta)
 
         # Item stores information in the `content`, which is a dictionary.
         self.content: dict = {}
@@ -104,124 +105,15 @@ class Item(Task, MutableMapping):
         super().__setstate__(state)
         self.__dict__["sel"] = sel
 
+    def __str__(self):
+        return str(self.content)
+
 
 class DefaultItem(Item):
     """ Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
 
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
-
-
-class Processors(object):
-    """ Processors are used to process field values for ParselItem
-    """
-
-    @staticmethod
-    def first():
-        """ get the first element from the values
-        """
-
-        def _f(values):
-            if isinstance(values, list) and values:
-                return values[0]
-            else:
-                return values
-
-        return _f
-
-    @staticmethod
-    def strip():
-        """ strip every string in values
-        """
-
-        def _f(value):
-            if isinstance(value, list):
-                return [_f(v) for v in value]
-            elif isinstance(value, dict):
-                return {k: _f(v) for k, v in value.items()}
-            elif isinstance(value, str):
-                return str.strip(value)
-            else:
-                return value
-
-        return _f
-
-    @staticmethod
-    def map(func):
-        """ apply function to every item of filed's values list
-        """
-
-        def _f(values):
-            return [func(v) for v in values]
-
-        return _f
-
-    @staticmethod
-    def filter(func=bool):
-        """ pick from those elements of the values list for which function returns true
-        """
-
-        def _f(values):
-            return [v for v in values if func(v)]
-
-        return _f
-
-    @staticmethod
-    def drop(func=bool):
-        def _f(values):
-            if func(values):
-                raise DropFieldError
-
-        return _f
-
-    @staticmethod
-    def re(regex, group_index=0):
-        def _f(value):
-            match = re.search(regex, value)
-            if match:
-                return match.group(group_index)
-            return None
-
-        return _f
-
-    @staticmethod
-    def parse_datetime(drop_error=True):
-        def _f(text):
-            if text:
-                match = re.search(
-                    r"(?P<year>\d{4}).*\D(?P<month>\d{2}).*\D(?P<day>\d{2})", text
-                )
-                if match:
-                    date = datetime(**{k: int(v) for k, v in match.groupdict().items()})
-                    return date
-            else:
-                if drop_error:
-                    ParselItem.drop_field()
-                else:
-                    return text
-
-        return _f
-
-    @staticmethod
-    def default(default, fn=bool):
-        def _f(value):
-            if bool(value):
-                return value
-            else:
-                return default
-
-        return _f
-
-    @staticmethod
-    def try_(*fns):
-        def _f(value):
-            for fn in fns:
-                try:
-                    return fn(value)
-                except Exception:
-                    pass
-
-        return _f
 
 
 class Field:
@@ -511,12 +403,12 @@ class ParselItem(Item):
         raise DropFieldError()
 
     @classmethod
-    def bind(cls, field: str = None, map=False):
+    def bind(cls, field: str = None, map_=False):
         """ Bind field processor. """
 
         def decorator(func):
             nonlocal field
-            nonlocal map
+            nonlocal map_
             if not field:
                 func_name = func.__name__
                 if func_name.startswith("process_"):
@@ -529,7 +421,7 @@ class ParselItem(Item):
             lis = cls._bindmap.setdefault(field, [])
             if not isinstance(lis, list):
                 lis = [lis]
-            if map:
+            if map_:
                 lis.append(Processors.map(func))
             else:
                 lis.append(func)
