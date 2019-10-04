@@ -35,6 +35,10 @@ class ChainRequest:
         self.kws["method"] = "GET"
         self.kws["callback"] = []
 
+    def status_allowed(self, allowed):
+        self.kws["status_allowed"] = allowed
+        return self
+
     def meta(self, meta: dict):
         m = self.kws.setdefault("meta", {})
         m.update(meta)
@@ -55,23 +59,23 @@ class ChainRequest:
         self.kws["callback"].append(func)
         return self
 
-    def spawn(self, item, css=None):
+    def spawn(self, item, divider=None, allowed=[200]):
         def fn(resp: Response):
-            if css:
-                for sel in resp.sel.css(css):
-                    yield from item.to_vanilla(sel)
+            if resp.status in allowed:
+                if divider:
+                    for sel in resp.sel.css(divider):
+                        yield from item.to_vanilla(sel, meta=resp.meta)
             else:
-                yield from item.to_vanilla(resp.sel)
+                    yield from item.to_vanilla(resp.sel, meta=resp.meta)
 
         self.kws["callback"].append(fn)
         return self
 
     def follow(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
         req = ChainRequest()
+        req.meta(kwargs.pop("meta", {}))
         if pass_meta:
-            req.meta(self.kws.get("meta", {}))
-            if "meta" in kwargs:
-                req.meta(kwargs.pop("meta"))
+            req.meta(self.kws.pop("meta", {}))
 
         def fn(resp: Response):
             count = 0
