@@ -2,7 +2,6 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from copy import deepcopy
 from typing import AsyncGenerator, Callable, Iterable, List, Union
 from urllib.parse import urljoin
 
@@ -383,7 +382,7 @@ class Response(Task):
             raise ValueError("urljoin receive bad argument{}".format(a))
         return urljoin(self.url_str, url)
 
-    def paginate(self, css: str, limit: int = 0, **kwargs):
+    def paginate(self, css: str, limit: int = 0, pass_meta=False, **kwargs):
         """ Follow links and yield requests with same callback functions.
         Additional keyword arguments will be used for constructing requests.
 
@@ -391,9 +390,12 @@ class Response(Task):
             css (str): css selector
             limit: max number of links to follow.
         """
+        meta = kwargs.pop("meta", {})
+        if pass_meta:
+            meta.update(self.meta)
         count = 0
         for url in self.sel.css(css).getall():
-            request = Request(url, **kwargs)
+            request = Request(url, meta=meta, **kwargs)
             for cb in self.request.callbacks:
                 request.add_callback(cb)
             yield request
@@ -401,7 +403,7 @@ class Response(Task):
             if limit and count >= limit:
                 break
 
-    def follow(self, css, callback=None, limit=0, **kwargs):
+    def follow(self, css, callback=None, limit=0, pass_meta=False, **kwargs):
         """ Yield requests in current page using css selector.
         Additional keyword arguments will be used for constructing requests.
 
@@ -410,27 +412,30 @@ class Response(Task):
             callback (callable, optional):  Defaults to None.
             limit: max number of links to follow.
         """
+        meta = kwargs.pop("meta", {})
+        if pass_meta:
+            meta.update(self.meta)
         count = 0
         for url in self.sel.css(css).getall():
-            request = Request(url, callback=callback, **kwargs)
+            request = Request(url, callback=callback, meta=meta, **kwargs)
             yield request
             count += 1
             if limit and count >= limit:
                 break
 
-    def spawn(self, item, css=None, **kwargs):
+    def spawn(self, item, divider=None, pass_meta=True, **kwargs):
         """ Yield items in current page
         Additional keyword arguments will be used for constructing items.
 
         Args:
-            css (str): css divider
+            divider (str): css divider
             item (ParselItem): item class
         """
-        if css:
-            for sel in self.sel.css(css):
-                yield item(sel, **kwargs)
+        if divider:
+            for sel in self.sel.css(divider):
+                yield item(sel, meta=self.meta, **kwargs)
         else:
-            yield item(self.sel, **kwargs)
+            yield item(self.sel, meta=self.meta, **kwargs)
 
     def add_callback(self, func: _Function):
         if isinstance(func, Iterable):
