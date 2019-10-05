@@ -488,7 +488,7 @@ class FileRequest(Request):
         *args,
         fdir=None,
         fname=None,
-        skip_if_exists=False,
+        skip_if_exists=True,
         callback=None,
         method="GET",
         request_config=None,

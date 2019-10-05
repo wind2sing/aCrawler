@@ -57,7 +57,7 @@ class Task:
         if family:
             self.families.add(family)
         self.primary_family = family or self.__class__.__name__
-        self._ancestor = None
+        self._ancestor = ""
 
         self.crawler = self.middleware.crawler
 

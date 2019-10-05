@@ -320,7 +320,7 @@ class Crawler(object):
             raise Exception("Not valid url from web request!")
         yield None
 
-    async def web_action_after_query(self):
+    async def web_action_after_query(self, items):
         """ Action to be done after the web service finish the query and tasks. Should be overwritten.
         """
         pass
