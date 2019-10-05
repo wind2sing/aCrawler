@@ -7,19 +7,20 @@ from acrawler.utils import get_logger
 
 logger = get_logger(__name__)
 
+routes = web.RouteTableDef()
+
 
 async def runweb(crawler: Crawler = None):
-    routes = web.RouteTableDef()
-
     @routes.get("/")
     async def hello(request):
         return web.Response(text="Hello, this is {}".format(crawler.name))
 
-    @routes.get("/add_task")
+    @routes.get("/add")
     async def add_task(request):
         try:
             query = request.query.copy()
-            ancestor = "@web" + str(time.time())
+            ancestor = "web@" + str(time.time())
+            logger.info(request.rel_url)
             async for task in crawler.web_add_task_query(query):
                 await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
 
@@ -31,7 +32,7 @@ async def runweb(crawler: Crawler = None):
                 res["items"] = items
                 return web.json_response(res)
             else:
-                raise Exception("Items not found!")
+                raise Exception("Not found")
 
         except Exception as e:
             logger.error(e)
