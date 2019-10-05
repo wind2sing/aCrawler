@@ -1,6 +1,7 @@
 from parsel import Selector
 from .item import ParselItem
 from .http import Request
+from .utils import to_asyncgen
 import re
 import urllib.parse
 import logging
@@ -23,14 +24,9 @@ class Parser:
         follow_patterns: a list containing strings as regex patterns or a function.
         item_type: a custom item class to store results.
         css_divider: You may have many pieces in one response. Yield them in different selectors by providing a css_divider.
-
+        selectors_loader: a function accepts selector and yield selectors. Default one deals with css_divider.
+        callbacks: additional callbacks.
     """
-
-    in_pattern = ""
-    follow_patterns = []
-    item_types = []
-
-    css_divider: str = None
 
     def _selectors_loader(self, selector):
         """You may have many pieces in one response. Yield them in different selectors."""
@@ -45,22 +41,25 @@ class Parser:
         self,
         in_pattern: _RE = "",
         follow_patterns: List[_RE] = None,
-        selectors_loader: _Function = None,
         css_divider: str = None,
         item_type: ParselItem = None,
         extra: dict = None,
-        add_meta: bool = False,
+        pass_meta: bool = False,
+        selectors_loader: _Function = None,
+        callbacks: List[_Function] = None,
     ):
 
         self.in_pattern = in_pattern
-        self.follow_patterns = follow_patterns
+        self.follow_patterns = follow_patterns or []
 
         self.item_type = item_type
         self.extra = extra
-        self.add_meta = add_meta
+        self.pass_meta = pass_meta
 
         self.css_divider = css_divider
         self.selectors_loader = selectors_loader or self._selectors_loader
+
+        self.callbacks = callbacks or []
 
     def _check_in_pattern(self, response):
         if isinstance(self.in_pattern, str):
@@ -70,12 +69,17 @@ class Parser:
                 return True
         return False
 
-    def parse(self, response):
+    async def parse(self, response):
         """Main function to parse the response."""
 
-        if self._check_in_pattern(response):
-            yield from self.parse_items(response)
-            yield from self.parse_links(response)
+        if self._check_in_pattern(response) and response.ok:
+            for item in self.parse_items(response):
+                yield item
+            for req in self.parse_links(response):
+                yield req
+            for callback in self.callbacks:
+                async for task in to_asyncgen(callback, response):
+                    yield task
         else:
             yield None
 
@@ -104,9 +108,11 @@ class Parser:
                     extra = {}
                     if self.extra:
                         extra.update(self.extra)
-                    if self.add_meta and response.meta:
-                        extra.update(response.meta)
-                    yield self.item_type(sel, extra=extra)
+                    if self.pass_meta and response.meta:
+                        meta = response.meta
+                    else:
+                        meta = None
+                    yield self.item_type(sel, extra=extra, meta=meta)
                 else:
                     logger.warning(
                         f"Parser'item_type should be a subclass of <ParselItem>, {self.item_type}found!"
