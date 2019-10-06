@@ -1,35 +1,89 @@
 from acrawler.crawler import Crawler
 from acrawler.http import Request, Response
-from acrawler.item import ParselItem
-from acrawler.utils import check_import
+from acrawler.item import ParselItem, Item
+from acrawler.utils import check_import, to_asyncgen
 from acrawler.middleware import register
 
 
 class ChainCrawler:
-    def __init__(
-        self,
-        concurrency=4,
-        delay=0,
-        config: dict = None,
-        middleware_config: dict = None,
-        request_config: dict = None,
+    def __init__(self, concurrency=4, delay=0):
+        self.config = {}
+        self.middleware_config = {}
+        self.request_config = {}
+
+        self.concurrency(concurrency)
+        self.delay(delay)
+
+        self.task_pool = []  # storage for ChainRequest
+        self._parse_query_func = None  # query parser function for web service
+        self._after_query_func = None
+        self._crawler = None  # Crawler instance
+
+    def config(
+        self, conf: dict = None, middleware_conf: dict = None, request_conf: dict = None
     ):
-        config = config or {}
-        config["MAX_REQUESTS"] = concurrency
-        config["DOWNLOAD_DELAY"] = delay
-        self._crawler = Crawler(config, middleware_config, request_config)
+        if conf:
+            self.config.update(conf)
+        if middleware_conf:
+            self.middleware_config.update(middleware_conf)
+        if request_config:
+            self.request_config.update(request_conf)
+        return self
+
+    def concurrency(
+        self,
+        max_requests=4,
+        max_requests_per_host=0,
+        max_requests_special_host: dict = None,
+        max_workers=None,
+    ):
+        self.config["MAX_REQUESTS"] = max_requests
+        self.config["MAX_WORKERS"] = max_workers or max_requests
+        self.config["MAX_REQUESTS_PER_HOST"] = max_requests_per_host
+        self.config["MAX_REQUESTS_SPECIAL_HOST"] = max_requests_special_host or {}
+        return self
+
+    def delay(self, delay=0):
+        self.config["DOWNLOAD_DELAY"] = delay
+        return self
+
+    def retry(self, retry=3):
+        self.config["MAX_TRIES"] = retry
+        return self
 
     def use(self, handler_cls, config: dict = None):
-        self._crawler.config.update(config or {})
+        """Register a handler"""
+        self.config.update(config or {})
         register()(handler_cls)
         return self
 
     def add(self, task):
-        for t in task.to_vanilla():
-            self._crawler.add_task_sync(t)
+        """Add a Chain-Task"""
+        self.task_pool.append(task)
         return self
 
     def run(self):
+        """Entry method to initialize the Cralwer instance."""
+        self._crawler = Crawler(
+            self.config, self.middleware_config, self.request_config
+        )
+        if self._parse_query_func:
+
+            def _web_add_task_query(query):
+                self._parse_query_func(query)
+                for task in self.task_pool:
+        for t in task.to_vanilla():
+                        yield t
+
+            self._crawler.web_add_task_query = _web_add_task_query
+
+            if self._after_query_func:
+                self._crawler.web_action_after_query = self._after_query_func
+
+        for task in self.task_pool:
+            for t in task.to_vanilla():
+            self._crawler.add_task_sync(t)
+
         self._crawler.run()
         return self
 
@@ -112,7 +166,8 @@ class ChainRequest:
         return self
 
     def to_vanilla(self, **kwargs):
-        for url in self._urls:
+        while self._urls:
+            url = self._urls.pop()
             yield Request(url, **self.kws, **kwargs)
 
     def callback(self):
@@ -155,7 +210,7 @@ class ChainItem:
         self.kws["re"].update(rules)
         return self
 
-    def to_vanilla(self, sel, **kwargs):
+    def to_vanilla(self, sel=None, **kwargs):
         yield ParselItem(sel, **self.kws, **kwargs)
 
     def register(self, position: int = None, priority: int = None):
@@ -188,4 +243,6 @@ class ChainItem:
             print(item)
 
         register(self.primary_family, priority=priority)(quick_debug_item)
+
+        return self
 
