@@ -305,7 +305,7 @@ class Crawler(object):
         """
         yield None
 
-    async def web_add_task_query(self, query: dict):
+    def web_add_task_query(self, query: dict):
         """ This method is to deal with web requests if you enable the web service. New tasks should be
         yielded in this method. And Crawler will finish tasks to send response. Should be overwritten.
 
@@ -320,7 +320,7 @@ class Crawler(object):
             raise Exception("Not valid url from web request!")
         yield None
 
-    async def web_action_after_query(self, items):
+    def web_action_after_query(self, items):
         """ Action to be done after the web service finish the query and tasks. Should be overwritten.
         """
         pass
@@ -631,9 +631,10 @@ class Crawler(object):
 
     async def _log_status_timer(self):
         delta = self.config["LOG_TIME_DELTA"]
-        while True:
-            await asyncio.sleep(delta)
-            await self._log_status()
+        if delta:
+            while True:
+                await asyncio.sleep(delta)
+                await self._log_status()
 
     async def _log_status(self):
         time_delta = time.time() - self.start_time
@@ -650,13 +651,13 @@ class Crawler(object):
             )
         self.initial_counts = deepcopy(counts_dict)
         logger.info(
-            "Normal  Scheduler tasks left, queue:{} waiting:{}".format(
+            "Normal tasks left--- queue:{} waiting:{}".format(
                 await self.sdl.q.get_length_of_pq(),
                 await self.sdl.q.get_length_of_waiting(),
             )
         )
         logger.info(
-            "Request Scheduler tasks left, queue:{} waiting:{}".format(
+            "Request tasks left--- queue:{} waiting:{}".format(
                 await self.sdl_req.q.get_length_of_pq(),
                 await self.sdl_req.q.get_length_of_waiting(),
             )

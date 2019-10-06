@@ -10,7 +10,7 @@ class BaseCounter:
         self.crawler = crawler
 
         # Checking log by special host
-        self.conf = self.crawler.config.get("MAX_REQUESTS_SPECIAL_HOST", {}).copy()
+        self.conf = (self.crawler.config.get("MAX_REQUESTS_SPECIAL_HOST") or {}).copy()
         self.hosts = list(self.conf.keys())
         self.check = len(self.hosts) > 0
 

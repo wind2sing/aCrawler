@@ -1,4 +1,5 @@
 import time
+from inspect import iscoroutinefunction
 
 from aiohttp import web
 
@@ -21,15 +22,14 @@ async def runweb(crawler: Crawler = None):
             query = request.query.copy()
             ancestor = "web@" + str(time.time())
             logger.info(request.rel_url)
-            async for task in crawler.web_add_task_query(query):
+            for task in crawler.web_add_task_query(query):
                 await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
 
             await crawler.counter.join_by_ancestor_unfinished(ancestor)
             items = crawler.web_items.pop(ancestor, [])
             if items:
-                await crawler.web_action_after_query(items)
                 res = {"error": None}
-                res["items"] = items
+                res["content"] = crawler.web_action_after_query(items)
                 return web.json_response(res)
             else:
                 raise Exception("Not found")

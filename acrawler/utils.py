@@ -79,7 +79,7 @@ async def to_asyncgen(fn, *args, **kwargs):
     elif callable(judge):
         yield fn(*args, **kwargs)
     else:
-        raise TypeError("Callback {} not valid!".format(fn))
+        raise TypeError("function {} not valid!".format(fn))
 
 
 class FakeModule:
