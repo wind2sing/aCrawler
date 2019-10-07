@@ -238,7 +238,7 @@ class ItemCollector(Handler):
 
     async def on_start(self):
         self.do_web = self.crawler.web_enable
-            self.crawler.web_items = {}
+        self.crawler.web_items = {}
 
     async def handle_after(self, item):
         if item.ancestor.startswith("web@"):
@@ -313,6 +313,7 @@ class ExpiredWatcher(Handler):
 
     last_handle_time = None
     ttl: int = 20
+    delay_after_failed: int = 0
 
     def __init__(self, *args, **kwargs):
         self.expired = asyncio.Event()
@@ -338,10 +339,13 @@ class ExpiredWatcher(Handler):
 
             logger.warning("Token is expired. Try to handle...")
             await asyncio.sleep(0)
-            await self.custom_expired_worker()
-            self.last_handle_time = time.time()
-            logger.warning("Hanling down, clear the Event 'expired'.")
-            self.expired.clear()
+            success = await self.custom_expired_worker()
+            if success:
+                self.last_handle_time = time.time()
+                logger.warning("Hanling down, clear the Event 'expired'.")
+                self.expired.clear()
+            else:
+                await asyncio.sleep(self.delay_after_failed)
 
     async def custom_expired_worker(self):
         pass
