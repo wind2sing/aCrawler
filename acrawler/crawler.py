@@ -325,6 +325,15 @@ class Crawler(object):
         """
         pass
 
+    async def add_then_wait(self, *tasks):
+        ancestor = "web@" + str(time.time())
+        for task in tasks:
+            await self.add_task(task, dont_filter=True, ancestor=ancestor)
+
+        await self.counter.join_by_ancestor_unfinished(ancestor)
+        items = self.web_items.pop(ancestor, [])
+        return items
+
     async def add_task(
         self, new_task: "acrawler.task.Task", dont_filter=False, ancestor=None, flag=1
     ) -> bool:
