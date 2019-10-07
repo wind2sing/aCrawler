@@ -238,11 +238,10 @@ class ItemCollector(Handler):
 
     async def on_start(self):
         self.do_web = self.crawler.web_enable
-        if self.do_web:
             self.crawler.web_items = {}
 
     async def handle_after(self, item):
-        if self.do_web and item.ancestor.startswith("web@"):
+        if item.ancestor.startswith("web@"):
             li = self.crawler.web_items.setdefault(item.ancestor, [])
             li.append(item.content)
 

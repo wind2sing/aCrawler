@@ -8,10 +8,20 @@ from acrawler.utils import get_logger
 
 logger = get_logger(__name__)
 
-routes = web.RouteTableDef()
+
+class Routes(web.RouteTableDef):
+    def __init__(self):
+        super().__init__()
+        self.crawler: Crawler = None
+
+
+routes = Routes()
+app = web.Application()
 
 
 async def runweb(crawler: Crawler = None):
+    routes.crawler = crawler
+
     @routes.get("/")
     async def hello(request):
         return web.Response(text="Hello, this is {}".format(crawler.name))
@@ -20,13 +30,8 @@ async def runweb(crawler: Crawler = None):
     async def add_task(request):
         try:
             query = request.query.copy()
-            ancestor = "web@" + str(time.time())
             logger.info(request.rel_url)
-            for task in crawler.web_add_task_query(query):
-                await crawler.add_task(task, dont_filter=True, ancestor=ancestor)
-
-            await crawler.counter.join_by_ancestor_unfinished(ancestor)
-            items = crawler.web_items.pop(ancestor, [])
+            items = await crawler.add_then_wait(*crawler.web_add_task_query(query))
             if items:
                 res = {"error": None}
                 res["content"] = crawler.web_action_after_query(items)
@@ -39,7 +44,6 @@ async def runweb(crawler: Crawler = None):
             res = {"error": str(e)}
             return web.json_response(res, status=400)
 
-    app = web.Application()
     app.add_routes(routes)
     runner = web.AppRunner(app)
     await runner.setup()
