@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-from acrawler.exceptions import DropFieldError
+from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 
 
 class Processors(object):
@@ -61,9 +61,25 @@ class Processors(object):
 
     @staticmethod
     def drop(func=bool):
-        def _f(values):
-            if func(values):
+        """If func return false, drop the Field."""
+
+        def _f(value):
+            if not func(value):
                 raise DropFieldError
+            else:
+                return value
+
+        return _f
+
+    @staticmethod
+    def drop_item(func=bool):
+        """If func return false, drop the Item."""
+
+        def _f(value):
+            if not func(value):
+                raise SkipTaskImmediatelyError
+            else:
+                return value
 
         return _f
 
@@ -95,6 +111,37 @@ class Processors(object):
                     return fn(value)
                 except Exception:
                     pass
+
+        return _f
+
+    @staticmethod
+    def replace(old, new, count=-1):
+        def _f(value):
+            return value.replace(old, new, count)
+
+        return _f
+
+    @staticmethod
+    def to_datetime(drop_error=False, with_time=False, regex=None):
+        if not regex:
+            if with_time:
+                regex = r".*(\d\d\d\d)[\-/](0?[1-9]|1[0-2])[\-/](0?[1-9]|[12][0-9]|3[01]).*(00|[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9]).*"
+            else:
+                regex = (
+                    r".*(\d\d\d\d)[\-/](0?[1-9]|1[0-2])[\-/](0?[1-9]|[12][0-9]|3[01]).*"
+                )
+
+        pattern = re.compile(regex)
+
+        def _f(value):
+            match = pattern.match(value)
+            if match:
+                return datetime(*map(int, match.groups()))
+            else:
+                if drop_error:
+                    raise DropFieldError
+                else:
+                    return value
 
         return _f
 
