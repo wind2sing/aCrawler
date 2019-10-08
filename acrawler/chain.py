@@ -17,16 +17,16 @@ class ChainCrawler:
         self.task_pool = []  # storage for ChainRequest
         self._parse_query_func = None  # query parser function for web service
         self._after_query_func = None
-        self._crawler = None  # Crawler instance
+        self.crawler: Crawler = None  # Crawler instance
 
-    def config(
+    def conf(
         self, conf: dict = None, middleware_conf: dict = None, request_conf: dict = None
     ):
         if conf:
             self.config.update(conf)
         if middleware_conf:
             self.middleware_config.update(middleware_conf)
-        if request_config:
+        if request_conf:
             self.request_config.update(request_conf)
         return self
 
@@ -62,30 +62,48 @@ class ChainCrawler:
         self.task_pool.append(task)
         return self
 
+    def to_vanilla(self):
+        while self.task_pool:
+            task = self.task_pool.pop()
+            for t in task.to_vanilla():
+                yield t
+
     def run(self):
         """Entry method to initialize the Cralwer instance."""
-        self._crawler = Crawler(
-            self.config, self.middleware_config, self.request_config
-        )
+        self.crawler = Crawler(self.config, self.middleware_config, self.request_config)
         if self._parse_query_func:
 
             def _web_add_task_query(query):
                 self._parse_query_func(query)
-                for task in self.task_pool:
-        for t in task.to_vanilla():
-                        yield t
+                yield from self.to_vanilla()
 
-            self._crawler.web_add_task_query = _web_add_task_query
+            self.crawler.web_add_task_query = _web_add_task_query
 
             if self._after_query_func:
-                self._crawler.web_action_after_query = self._after_query_func
+                self.crawler.web_action_after_query = self._after_query_func
 
-        for task in self.task_pool:
-            for t in task.to_vanilla():
-            self._crawler.add_task_sync(t)
+        for t in self.to_vanilla():
+            self.crawler.add_task_sync(t)
 
-        self._crawler.run()
+        self.crawler.run()
         return self
+
+    def web(self, host="localhost", port=8079):
+        """ decorator, bind web query parser function. """
+        self.config.update({"WEB_ENABLE": True, "WEB_HOST": host, "WEB_PORT": 8079})
+
+        def decorator(func=None):
+            self._parse_query_func = func
+            return func
+
+        return decorator
+
+    def web_after_query(self):
+        def decorator(func):
+            self._after_query_func = func
+            return func
+
+        return decorator
 
 
 class ChainRequest:
@@ -105,16 +123,17 @@ class ChainRequest:
         m.update(meta)
         return self
 
-    def request(self, urls, method="GET"):
+    def request(self, urls, method="GET", **kwargs):
         self.kws["method"] = "GET"
+        self.kws.update(kwargs)
         if isinstance(urls, list):
             self._urls.extend(urls)
         else:
             self._urls.append(urls)
         return self
 
-    def get(self, urls):
-        return self.request(urls)
+    def get(self, urls, **kwargs):
+        return self.request(urls,**kwargs)
 
     def add_callback(self, func):
         self.kws["callback"].append(func)
@@ -196,6 +215,10 @@ class ChainItem:
 
     def extra_from_meta(self):
         self.kws["extra_from_meta"] = True
+        return self
+
+    def store(self):
+        self.kws["store"] = True
         return self
 
     def css(self, rules: dict):
