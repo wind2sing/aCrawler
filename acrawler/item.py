@@ -24,10 +24,14 @@ class Item(Task, MutableMapping):
         content: Item stores information in the `content`, which is a dictionary.
     """
 
-    log = False
-    store = False
-
-    def __init__(self, extra: dict = None, extra_from_meta=False, **kwargs):
+    def __init__(
+        self,
+        extra: dict = None,
+        extra_from_meta=False,
+        log=False,
+        store=False,
+        **kwargs,
+    ):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
@@ -42,6 +46,8 @@ class Item(Task, MutableMapping):
         self.content.update(self.extra)
 
         # self.content.update({'_item_type': self.__class__.__name__})
+        self.log = log
+        self.store = store
 
     def __len__(self):
         return len(self.content)
@@ -240,7 +246,7 @@ class ParselItem(Item):
 
     def __init__(
         self,
-        selector,
+        selector=None,
         extra=None,
         css=None,
         xpath=None,
