@@ -27,10 +27,10 @@ class ReScheduleError(Exception):
     continue to handle the task.
     """
 
-    def __init__(self, defer: int = 0, recrawl: int = None, *args, **kwargs):
+    def __init__(self, defer: int = 0, recrawl: int = None):
         self.defer = defer
         self.recrawl = recrawl
-        super().__init__(*args, **kwargs)
+        super().__init__(defer, recrawl)
 
 
 class ReScheduleImmediatelyError(ReScheduleError):
@@ -47,9 +47,9 @@ class ResponseStatusError(Exception):
     """ Indicate that the Request failed with incorrect Response's status.
     """
 
-    def __init__(self, status: int, *args, **kwargs):
+    def __init__(self, status: int):
         self.status = status
-        super().__init__(*args, **kwargs)
+        super().__init__(status)
 
     def __str__(self):
         return f"<{self.status}>"
