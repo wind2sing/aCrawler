@@ -1,3 +1,4 @@
+from pprint import pformat
 from acrawler.crawler import Crawler
 from acrawler.http import Request, Response
 from acrawler.item import ParselItem, Item
@@ -133,7 +134,7 @@ class ChainRequest:
         return self
 
     def get(self, urls, **kwargs):
-        return self.request(urls,**kwargs)
+        return self.request(urls, **kwargs)
 
     def add_callback(self, func):
         self.kws["callback"].append(func)
@@ -243,7 +244,7 @@ class ChainItem:
         return register(family, position, priority)
 
     def to_mongo(
-        self, db, col, key=None, priority=None, address="mongodb://localhost:27017"
+        self, db, col, key=None, priority=100, address="mongodb://localhost:27017"
     ):
         mo = check_import("motor.motor_asyncio")
         mongo_client = mo.AsyncIOMotorClient(address)
@@ -261,9 +262,12 @@ class ChainItem:
         register(self.primary_family, priority=priority)(quick_to_mongo)
         return self
 
-    def debug(self, priority=100):
+    def debug(self, priority=100, pretty=False):
         def quick_debug_item(item):
-            print(item)
+            if pretty:
+                print(pformat(item.content))
+            else:
+                print(item)
 
         register(self.primary_family, priority=priority)(quick_debug_item)
 
