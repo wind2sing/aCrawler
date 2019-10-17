@@ -21,8 +21,10 @@ class BaseCounter:
 
         # Delay config
         self.delay = self.crawler.config.get("DOWNLOAD_DELAY", 0)
-        self.conf = self.crawler.config.get("DOWNLOAD_DELAY_SPECIAL_HOST", {}).copy()
-        self.delay_hosts = list(self.conf.keys())
+        self.conf_delay = self.crawler.config.get(
+            "DOWNLOAD_DELAY_SPECIAL_HOST", {}
+        ).copy()
+        self.hosts_delay = list(self.conf_delay.keys())
 
     async def unfinished_inc(self, task):
         raise NotImplementedError()
@@ -68,17 +70,11 @@ class BaseCounter:
         req.chosts = []  # this contains hosts for special check
         req.cuni = False  # this flags its state for unicheck
 
-        if self.unicheck:
-            count = self.uniconf.setdefault(req.url.host, self.uni)
-            if count > 0:
-                self.uniconf[req.url.host] -= 1
-                req.cuni = True
-            else:
-                raise ReScheduleError()
-
+        to_unicheck = True  # special-host-check has higher priority than unicheck
         if self.check:
             for host in self.hosts:
                 if host in req.url.host:
+                    to_unicheck = False
                     if self.conf[host] > 0:
                         req.chosts.append(host)
                         self.conf[host] -= 1
@@ -86,12 +82,20 @@ class BaseCounter:
                     else:
                         raise ReScheduleError()
 
+        if self.unicheck and to_unicheck:
+            count = self.uniconf.setdefault(req.url.host, self.uni)
+            if count > 0:
+                self.uniconf[req.url.host] -= 1
+                req.cuni = True
+            else:
+                raise ReScheduleError()
+
         # Start delay
         origin = True
         target = 0
-        for host in self.hosts:
+        for host in self.hosts_delay:
             if host in req.url.host:
-                target += self.conf[host]
+                target += self.conf_delay[host]
                 origin = False
 
         if origin:
