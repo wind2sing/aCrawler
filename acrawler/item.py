@@ -88,10 +88,10 @@ class Item(Task, MutableMapping):
             logger.info(f"{self.content}")
 
     async def _process(self):
-        async for task in to_asyncgen(self.custom_process, self.content):
+        async for task in to_asyncgen(self.custom_process):
             yield task
 
-    def custom_process(self, content):
+    def custom_process(self):
         """can be rewritten for customed futhur processing of the item.
         """
 
@@ -275,10 +275,14 @@ class ParselItem(Item):
         self.re_rules = {}
         self.field_processors = {}
 
+        # shortcut
+        self.Selector = Selector
+
     async def _execute(self, **kwargs) -> _TaskGenerator:
-        await self._load()
-        async for task in super()._execute(**kwargs):
-            yield task
+        if self.sel:
+            await self._load()
+            async for task in super()._execute(**kwargs):
+                yield task
         yield None
 
     async def load(self):
