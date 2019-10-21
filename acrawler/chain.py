@@ -65,7 +65,7 @@ class ChainCrawler:
         if isinstance(task, Iterable):
             self.task_pool.extend(task)
         else:
-        self.task_pool.append(task)
+            self.task_pool.append(task)
         return self
 
     def to_vanilla(self):
@@ -145,11 +145,12 @@ class ChainRequest:
         self.kws["callback"].append(func)
         return self
 
-    def spawn(self, item, divider=None, allowed=[200]):
+    def spawn(self, item, divider=None, allowed=[200], xpath=False):
         def fn(resp: Response):
             if resp.status in allowed:
                 if divider:
-                    for sel in resp.sel.css(divider):
+                    sels = resp.sel.xpath(divider) if xpath else resp.sel.css(divider)
+                    for sel in sels:
                         yield from item.to_vanilla(sel, meta=resp.meta)
                 else:
                     yield from item.to_vanilla(resp.sel, meta=resp.meta)
