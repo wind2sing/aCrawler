@@ -5,6 +5,8 @@ from acrawler.item import ParselItem, Item
 from acrawler.utils import check_import, to_asyncgen
 from acrawler.middleware import register
 
+from collections.abc import Iterable
+
 
 class ChainCrawler:
     def __init__(self, concurrency=4, delay=0):
@@ -60,6 +62,9 @@ class ChainCrawler:
 
     def add(self, task):
         """Add a Chain-Task"""
+        if isinstance(task, Iterable):
+            self.task_pool.extend(task)
+        else:
         self.task_pool.append(task)
         return self
 
