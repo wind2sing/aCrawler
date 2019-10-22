@@ -323,7 +323,7 @@ class Crawler(object):
     def web_action_after_query(self, items):
         """ Action to be done after the web service finish the query and tasks. Should be overwritten.
         """
-        pass
+        return items
 
     async def add_then_wait(self, *tasks):
         ancestor = "web@" + str(time.time())
