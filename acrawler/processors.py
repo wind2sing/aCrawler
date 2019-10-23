@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, date
 
 from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 
@@ -122,26 +122,68 @@ class Processors(object):
         return _f
 
     @staticmethod
-    def to_datetime(drop_error=False, with_time=False, regex=None):
+    def to_datetime(error_drop=False, error_keep=False, with_time=False, regex=None):
+        """extract datetime, return None if not matched
+
+        :param error_drop: drop the field if not matched, defaults to False
+        :type error_drop: bool, optional
+        :param error_keep: keep the original value if not matched, defaults to False
+        :type error_keep: bool, optional
+        :param with_time: regex with time parsing, defaults to False
+        :type with_time: bool, optional
+        :param regex: provided custom regex, defaults to None
+        :type regex: str, optional
+        """
         if not regex:
             if with_time:
-                regex = r".*(\d\d\d\d)[\-/](0?[1-9]|1[0-2])[\-/](0?[1-9]|[12][0-9]|3[01]).*(00|[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9]).*"
+                regex = r".*(\d\d\d\d)\D+(0?[1-9]|1[0-2])\D+(0?[1-9]|[12][0-9]|3[01])\D+(00|[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9]).*"
             else:
-                regex = (
-                    r".*(\d\d\d\d)[\-/](0?[1-9]|1[0-2])[\-/](0?[1-9]|[12][0-9]|3[01]).*"
-                )
+                regex = r".*(\d\d\d\d)\D+(0?[1-9]|1[0-2])\D+(0?[1-9]|[12][0-9]|3[01]).*"
 
         pattern = re.compile(regex)
 
         def _f(value):
-            match = pattern.match(value)
+            match = pattern.match(value or "")
             if match:
                 return datetime(*map(int, match.groups()))
             else:
-                if drop_error:
+                if error_drop:
                     raise DropFieldError
-                else:
+                elif error_keep:
                     return value
+                else:
+                    return None
 
         return _f
 
+    @staticmethod
+    def to_date(error_drop=False, error_keep=False, regex=None):
+        """extract date, return None if not matched
+
+        :param error_drop: drop the field if not matched, defaults to False
+        :type error_drop: bool, optional
+        :param error_keep: keep the original value if not matched, defaults to False
+        :type error_keep: bool, optional
+        :param with_time: regex with time parsing, defaults to False
+        :type with_time: bool, optional
+        :param regex: provided custom regex, defaults to None
+        :type regex: str, optional
+        """
+        if not regex:
+            regex = r".*(\d\d\d\d)\D+(0?[1-9]|1[0-2])\D+(0?[1-9]|[12][0-9]|3[01]).*"
+
+        pattern = re.compile(regex)
+
+        def _f(value):
+            match = pattern.match(value or "")
+            if match:
+                return date(*map(int, match.groups()))
+            else:
+                if error_drop:
+                    raise DropFieldError
+                elif error_keep:
+                    return value
+                else:
+                    return None
+
+        return _f
