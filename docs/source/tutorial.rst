@@ -89,8 +89,8 @@ Then we need to define a new :class:`~acrawler.item.ParselItem` to store results
          "stars": "[h4:contains(Star) ~ a[href*=name]::text]",
       }
 
-        def custom_process(self, content):
-            pprint(content)
+        def custom_process(self):
+            pprint(self)
 
 
 Parse Movie Page

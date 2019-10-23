@@ -33,13 +33,13 @@ WEBSITES = [
 
 
 class ProxyItem(ParselItem):
-    def custom_process(self, content):
+    def custom_process(self):
         match = PATTERN.search(self.sel.extract())
         if match:
             ip = match.groups()[0]
             port = match.groups()[1]
-            content["proxy"] = ip + ":" + port
-            logger.info(content)
+            self["proxy"] = ip + ":" + port
+            logger.info(self)
 
 
 class ProxyCrawler(Crawler):

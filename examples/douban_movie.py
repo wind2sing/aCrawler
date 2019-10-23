@@ -4,8 +4,8 @@ from acrawler import Crawler, ParselItem, Parser, Processors as x
 class MovieItem(ParselItem):
     css = {"name": ["h1 > span::text", x.strip()]}
 
-    def custom_process(self, content):
-        print(content)
+    def custom_process(self):
+        print(self)
 
 
 class MyCrawler(Crawler):
