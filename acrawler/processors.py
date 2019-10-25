@@ -94,6 +94,26 @@ class Processors(object):
         return _f
 
     @staticmethod
+    def re_groups(regex, default=None):
+        def _f(value):
+            match = re.search(regex, value)
+            if match:
+                return match.groups(default)
+            return None
+
+        return _f
+
+    @staticmethod
+    def re_groupdict(regex, default=None):
+        def _f(value):
+            match = re.search(regex, value)
+            if match:
+                return match.groupdict(default)
+            return None
+
+        return _f
+
+    @staticmethod
     def default(default, fn=bool):
         def _f(value):
             if bool(value):
