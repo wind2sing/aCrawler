@@ -184,7 +184,7 @@ class Request(Task):
                     family=self.httpfamily,
                 )
                 rt = self.response
-                logger.info(f"<{self.response.status}> ({self.response.url_str})")
+                logger.info(f"<{self.response.status}> {self.response.url_str}")
                 return rt
         except Exception as e:
             raise e
@@ -517,7 +517,7 @@ class FileRequest(Request):
         self.file_dir = Path(fdir) if fdir else Path.cwd()
         self.file_dir.mkdir(parents=True, exist_ok=True)
 
-        self.file_name = self.url_str.split("/")[-1]
+        self.file_name = self.url_str.split("?", 1)[0].rsplit("/", 1)[-1]
         ext = self.file_name.split(".")[-1]
         if fname:
             self.file_name = fname + "." + ext
