@@ -697,7 +697,8 @@ class CrawlerStart(SpecialTask):
         logger.debug("Produce initial tasks...")
         async for task in to_asyncgen(self.crawler.start_requests):
             if isinstance(task, Request):
-                task.add_callback(self.crawler.parse)
+                if not task.callbacks:
+                    task.add_callback(self.crawler.parse)
                 await self.crawler.add_task(task)
             elif isinstance(task, Task):
                 await self.crawler.add_task(task)
