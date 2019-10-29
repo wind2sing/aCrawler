@@ -23,13 +23,15 @@ class Item(Task, MutableMapping):
         extra: During initialing, :attr:`content` will be updated from extra at first.
         content: Item stores information in the `content`, which is a dictionary.
     """
+    log = False
+    store = False
 
     def __init__(
         self,
         extra: dict = None,
         extra_from_meta=False,
-        log=False,
-        store=False,
+        log=None,
+        store=None,
         **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
@@ -45,9 +47,8 @@ class Item(Task, MutableMapping):
         self.content: dict = {}
         self.content.update(self.extra)
 
-        # self.content.update({'_item_type': self.__class__.__name__})
-        self.log = log
-        self.store = store
+        self.log = log or self.log
+        self.store = store or self.store
 
     def __len__(self):
         return len(self.content)
