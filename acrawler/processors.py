@@ -9,6 +9,20 @@ class Processors(object):
     All the methods are static.
     """
 
+    functions = {}
+
+    @classmethod
+    def register(cls):
+        def decorator(target):
+            cls.functions[target.__name__] = target
+            return target
+
+        return decorator
+
+    @classmethod
+    def use(cls, func_dict):
+        cls.functions.update(func_dict)
+
     @staticmethod
     def first():
         """ get the first element from the values
