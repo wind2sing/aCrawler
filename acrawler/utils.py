@@ -190,3 +190,19 @@ async def redis_push_start_urls_coro(
 def sync_coroutine(coro, loop=None):
     """Run a coroutine in synchronized way."""
     return (loop or asyncio.get_event_loop()).run_until_complete(coro)
+
+
+def partial(func, *args, new_args_before=False, **keywords):
+    def newfunc(*fargs, **fkeywords):
+        if new_args_before:
+            newkeywords = {**fkeywords, **keywords}
+            newargs = [*fargs, *args]
+        else:
+            newkeywords = {**keywords, **fkeywords}
+            newargs = [*args, *fargs]
+        return func(*newargs, **newkeywords)
+
+    newfunc.func = func
+    newfunc.args = args
+    newfunc.keywords = keywords
+    return newfunc

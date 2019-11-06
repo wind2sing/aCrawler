@@ -6,7 +6,7 @@ from parsel import Selector
 
 from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 from acrawler.task import Task
-from acrawler.utils import to_asyncgen
+from acrawler.utils import to_asyncgen, partial
 from acrawler.processors import Processors
 
 _Function = Callable
@@ -396,6 +396,15 @@ class ParselItem(Item):
         # Call field processors.
         for field, processors in self.field_processors.items():
             for processor in processors:
+                if isinstance(processor, str):
+                    li = processor.split(":", 1)
+                    func_name = li[0]
+                    args = li[1].split(",") if len(li) == 2 else []
+
+                    processor = partial(
+                        Processors.functions[func_name], *args, new_args_before=True
+                    )
+
                 self._on_field(field, processor)
 
     def _on_field(self, field, processor=lambda x: x, dest_field: str = None):
