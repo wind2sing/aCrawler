@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/wooddance/aCrawler/compare/v0.1.4...v0.1.5) (2019-11-07)
+
+
+### Bug Fixes
+
+* **chain:** change naming ([62995e2](https://github.com/wooddance/aCrawler/commit/62995e2))
+* **chain:** spawn crawler during run() ([6ccee3a](https://github.com/wooddance/aCrawler/commit/6ccee3a))
+* **cralwer:** wrong default values ([2ec846f](https://github.com/wooddance/aCrawler/commit/2ec846f))
+* **examples:** custom process change ([b926c78](https://github.com/wooddance/aCrawler/commit/b926c78))
+* **exceptions:** dumping error ([4157c3b](https://github.com/wooddance/aCrawler/commit/4157c3b))
+* **http:** default callback condition check ([0d40b67](https://github.com/wooddance/aCrawler/commit/0d40b67))
+* **http:** FileRequest filename ([76bc483](https://github.com/wooddance/aCrawler/commit/76bc483))
+* **http:** pass meta args ([6c2b64b](https://github.com/wooddance/aCrawler/commit/6c2b64b))
+* **item:** log as class attr ([66222c1](https://github.com/wooddance/aCrawler/commit/66222c1))
+* **item:** log, store as attributes ([12d5a33](https://github.com/wooddance/aCrawler/commit/12d5a33))
+* **log:** remove handlers at beginning ([a143405](https://github.com/wooddance/aCrawler/commit/a143405))
+* **middleware:** change default priority; add name ([e5f1573](https://github.com/wooddance/aCrawler/commit/e5f1573))
+* **middleware:** check if the handler already exists ([69e6c1e](https://github.com/wooddance/aCrawler/commit/69e6c1e))
+* **web:** change naming; expose routes; ([c077f01](https://github.com/wooddance/aCrawler/commit/c077f01))
+* **web:** default action return items ([6981883](https://github.com/wooddance/aCrawler/commit/6981883))
+* default values; naming; ([dee18c5](https://github.com/wooddance/aCrawler/commit/dee18c5))
+
+
+### Features
+
+* **acrawler:** add_and_wait ([256cbb4](https://github.com/wooddance/aCrawler/commit/256cbb4))
+* **chain:** add multiple tasks ([0b6d14a](https://github.com/wooddance/aCrawler/commit/0b6d14a))
+* **chain:** ChainCrawler use(); typo ([71dbf2d](https://github.com/wooddance/aCrawler/commit/71dbf2d))
+* **chain:** implement ChainCrawler ChainRequest ([0d59537](https://github.com/wooddance/aCrawler/commit/0d59537))
+* **chain:** implement ChainItem ([9807b9c](https://github.com/wooddance/aCrawler/commit/9807b9c))
+* **chain:** pretty debug ([b7f3995](https://github.com/wooddance/aCrawler/commit/b7f3995))
+* **chain:** spawn by xpath rule ([4bb2271](https://github.com/wooddance/aCrawler/commit/4bb2271))
+* **chain:** status control ([6e2c8f6](https://github.com/wooddance/aCrawler/commit/6e2c8f6))
+* **chain:** support web service ([b9f7c32](https://github.com/wooddance/aCrawler/commit/b9f7c32))
+* **expiredwathcer:** delay and retry ([fd1f135](https://github.com/wooddance/aCrawler/commit/fd1f135))
+* **http:** FileRequest use args to determine fdir ([f0aff89](https://github.com/wooddance/aCrawler/commit/f0aff89))
+* **middleware:** [@register](https://github.com/register) accepts more types ([dbf28ad](https://github.com/wooddance/aCrawler/commit/dbf28ad))
+* **middleware:** [@register](https://github.com/register) supports generator func ([f83b11d](https://github.com/wooddance/aCrawler/commit/f83b11d))
+* **parser:** accepts callbacks ([4ea5b8e](https://github.com/wooddance/aCrawler/commit/4ea5b8e))
+* **processors:** processors of string type ([31fa2c3](https://github.com/wooddance/aCrawler/commit/31fa2c3))
+* **processors:** re_groups ([157e481](https://github.com/wooddance/aCrawler/commit/157e481))
+* **processors:** register&use ([e46b7b7](https://github.com/wooddance/aCrawler/commit/e46b7b7))
+* **processors:** support drop_item ([44efee0](https://github.com/wooddance/aCrawler/commit/44efee0))
+* **processors:** to_date enhanced ([9c1fa22](https://github.com/wooddance/aCrawler/commit/9c1fa22))
+* **web:** expose web.routes ([94a8c30](https://github.com/wooddance/aCrawler/commit/94a8c30))
+* **x:** processors as a module ([7032286](https://github.com/wooddance/aCrawler/commit/7032286))
+
+
+
 ### [0.1.4](https://github.com/wooddance/aCrawler/compare/v0.1.3...v0.1.4) (2019-09-17)
 
 
