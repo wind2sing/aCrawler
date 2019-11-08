@@ -13,6 +13,18 @@ aCrawler
 🔍 A powerful web-crawling framework, based on aiohttp.
 
 
+Todo for *slime* version
+------------------------
+
+* Construct Core components
+   * Scheduler
+   * Configuration
+   * Workflow
+* Plugin Framework
+* Integrate Parselx
+* Default plugins
+* Chain Style
+* Single Function Style
 
 Feature
 -------
