@@ -17,6 +17,9 @@ class Crawler:
         self.sdl = Scheduler()
         middleware.crawler = self
 
+    def run(self):
+        return self.loop.run_until_complete(self.run_async())
+
     async def run_async(self):
         self.wokers = []
 
@@ -38,14 +41,15 @@ class Crawler:
             await self._finished.wait()
 
     async def add_task(self, new_task):
-        for plugin in middleware.iter_plugins(*new_task.families):
-            async for t in new_task._sandbox(new_task, plugin.before_add):
-                if isinstance(t, Task):
-                    await self.add_task(t)
-        if new_task._continue:
-            await self.sdl.produce(new_task)
-            self._unfinished_tasks += 1
-            self._finished.clear()
+        if isinstance(new_task, Task):
+            for plugin in middleware.iter_plugins(*new_task.families):
+                async for t in new_task._sandbox(new_task, plugin.before_add):
+                    if isinstance(t, Task):
+                        await self.add_task(t)
+            if new_task._continue:
+                await self.sdl.produce(new_task)
+                self._unfinished_tasks += 1
+                self._finished.clear()
 
     async def done_task(self):
         if self._unfinished_tasks <= 0:
@@ -54,3 +58,11 @@ class Crawler:
         if self._unfinished_tasks == 0:
             self._finished.set()
 
+    async def start_requests(self):
+        pass
+
+    async def next_requests(self):
+        pass
+
+    async def create_task(self, coro):
+        return await self.loop.create_task(coro)

@@ -16,6 +16,7 @@ class Config:
         self.plugins_config = {
             "acrawler.plugins.LoggerPlugin": True,
             "acrawler.plugins.RetryPlugin": True,
+            "acrawler.plugins.CrawlStartPlugin": True,
         }
 
         # LoggerPlugin
