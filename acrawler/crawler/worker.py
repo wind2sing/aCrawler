@@ -20,6 +20,8 @@ class Worker:
                 task: "Task" = await self.sdl.consume()
                 async for new_task in task.execute():
                     if isinstance(new_task, Task):
+                        new_task.meta = {**task.meta}
+                        new_task.ancestor = task.ancestor
                         await self.crawler.add_task(new_task)
 
                 await self.crawler.done_task()
