@@ -23,16 +23,12 @@ class Item(Task, MutableMapping):
         extra: During initialing, :attr:`content` will be updated from extra at first.
         content: Item stores information in the `content`, which is a dictionary.
     """
+
     log = False
     store = False
 
     def __init__(
-        self,
-        extra: dict = None,
-        extra_from_meta=False,
-        log=None,
-        store=None,
-        **kwargs,
+        self, extra: dict = None, extra_from_meta=False, log=None, store=None, **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
@@ -210,28 +206,9 @@ class Field:
 class ParselItem(Item):
     """The item working with Parser.
 
-    The item receive Parsel's selector and several rules.
+    The item receives Parsel's selector and several rules.
     The selector will process item's fields with these rules.
     Finally, it will call processors to process each field.
-
-    Args:
-        selector: Parsel's selector
-        default_rules: default value for item field
-        field_processors:  functions to process item field after scraping by rules
-        css_rules_first: use css selector and get the first result.
-        xpath_rules_first: use xpath selector and get the first result.
-        re_rules_first: use re selector and get the first result.
-        css_rules: use css selector and get a list with all results.
-        xpath_rules: use xpath selector and get a list with all results.
-        re_rules: use re selector and get a list with all results.
-
-    Examples:
-        A simple example to extract title and upper the title::
-
-            class MyItem(ParselItem):
-                default_rules = {'spider':'this'}
-                css_rules_first = {'title': 'title::text'}
-                field_processors = {'title': [str.upper,]}
 
     """
 

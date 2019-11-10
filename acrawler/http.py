@@ -180,7 +180,6 @@ class Request(Task):
                     links_to_abs=self.links_to_abs,
                     callbacks=self.callbacks.copy(),
                     request=self,
-                    meta=self.meta,
                     family=self.httpfamily,
                 )
                 rt = self.response
@@ -238,7 +237,6 @@ class Response(Task):
         encoding: str,
         links_to_abs: bool = False,
         callbacks: _Functions = None,
-        meta: dict = None,
         **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
@@ -246,6 +244,7 @@ class Response(Task):
         super().__init__(
             dont_filter=dont_filter, ignore_exception=ignore_exception, **kwargs
         )
+
         self.url = url
         self.status = status
         self.cookies = cookies
@@ -254,7 +253,6 @@ class Response(Task):
         self.body = body
         self.encoding = encoding
         self.links_to_abs = links_to_abs
-        self.meta = meta
         self.request = request
         self.callbacks = callbacks
         self.bind_cbs = False

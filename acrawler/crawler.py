@@ -71,7 +71,13 @@ class Worker:
                     if self.is_req:
                         await self.crawler.counter.require_req(task)
                     async for new_task in task.execute():
-                        await self.crawler.add_task(new_task, ancestor=task.ancestor)
+                        if isinstance(new_task, dict):
+                            new_task = DefaultItem(extra=new_task)
+                        if isinstance(new_task, Task):
+                            new_task.meta = {**task.meta}
+                            await self.crawler.add_task(new_task, ancestor=task.ancestor)
+                        else:
+                            continue
                 except asyncio.CancelledError as e:
                     if self.is_req:
                         await self.crawler.counter.release_req(task)
@@ -346,18 +352,13 @@ class Crawler(object):
             True if the task is successfully added.
         """
         added = False
-        if isinstance(new_task, Task):
-            if ancestor:
-                new_task.ancestor = ancestor
-            if isinstance(new_task, Request):
-                added = await self.sdl_req.produce(new_task, dont_filter=dont_filter)
-            else:
-                added = await self.sdl.produce(new_task, dont_filter=dont_filter)
-        elif isinstance(new_task, dict):
-            new_task = DefaultItem(extra=new_task)
-            if ancestor:
-                new_task.ancestor = ancestor
+        if ancestor:
+            new_task.ancestor = ancestor
+        if isinstance(new_task, Request):
+            added = await self.sdl_req.produce(new_task, dont_filter=dont_filter)
+        elif isinstance(new_task, Task):
             added = await self.sdl.produce(new_task, dont_filter=dont_filter)
+
         if added:
             await self.counter.task_add(new_task, flag=flag)
             return new_task
