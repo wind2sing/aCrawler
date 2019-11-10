@@ -1,11 +1,12 @@
 import time
 import logging
 from inspect import iscoroutinefunction, isabstract
-from ..utils import to_asyncgen
+from ..utils import to_asyncgen, get_logger
 import asyncio
 from collections import defaultdict
 from ..plugins import middleware
 from ..exceptions import SkipTaskError, ReScheduleError
+import traceback
 
 # Typing
 from typing import Union, Optional, Any, AsyncGenerator, Callable, Dict, List
@@ -15,7 +16,7 @@ if typing.TYPE_CHECKING:
     from .. import Crawler, Plugin
 _TaskGenerator = AsyncGenerator["Task", None]
 
-logger = logging.getLogger(__name__)
+logger = get_logger("task")
 
 
 class Task:
@@ -44,7 +45,7 @@ class Task:
         self.meta: "dict" = meta or {}
 
         #: store status information, used for various plugins
-        self.status: "dict" = defaultdict(lambda: None)
+        self.state: "dict" = defaultdict(lambda: None)
 
         #: store additional configuration, used for various plugins
         self.options: "dict" = defaultdict(lambda: None)
@@ -117,6 +118,7 @@ class Task:
                 async for new_task in to_asyncgen(func, self, *args, **kwargs):
                     yield new_task
             except Exception as e:
+                print(traceback.format_exc())
                 task.exceptions.append(e)
                 for plugin in self.middleware.iter_plugins(*self.families):
                     async for task in self._sandbox(self, plugin.on_error):
