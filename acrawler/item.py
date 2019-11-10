@@ -348,7 +348,7 @@ class ParselItem(Item):
             item.update({field: self.sel.css(rule).get()})
 
         for field, rule in self.xpath_rules_first.items():
-            item.update({field: self.sel.xpath(rule).get()})
+            item.update({field: self.sel.xpath(rule, **self.meta).get()})
 
         for field, rule in self.re_rules_first.items():
             item.update({field: self.sel.re_first(rule)})
@@ -357,7 +357,7 @@ class ParselItem(Item):
             item.update({field: self.sel.css(rule).getall()})
 
         for field, rule in self.xpath_rules.items():
-            item.update({field: self.sel.xpath(rule).getall()})
+            item.update({field: self.sel.xpath(rule, **self.meta).getall()})
 
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
