@@ -7,7 +7,7 @@ URL = "https://github.com/wooddance/aCrawler"
 EMAIL = "zireael.me@gmail.com"
 AUTHOR = "wooddance"
 VERSION = "0.1.5"
-REQUIRED = ["aiohttp", "parsel", "cchardet", "dill"]
+REQUIRED = ["aiohttp[speedups]", "parsel", "dill"]
 
 setup(
     name=NAME,

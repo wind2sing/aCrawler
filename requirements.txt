@@ -1,4 +1,3 @@
-aiohttp
+aiohttp[speedups]
 parsel
-cchardet
 dill

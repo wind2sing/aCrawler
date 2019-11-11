@@ -4,9 +4,9 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]
-aiohttp = "*"
+aiohttp = {extras = ["speedups"],version = "*"}
 parsel = "*"
-cchardet = "*"
+dill = "*"
 
 [requires]
 python_version = "3.6"
