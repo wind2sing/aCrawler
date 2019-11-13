@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from random import randint
+import random
 
 from acrawler.exceptions import ReScheduleError
 
@@ -8,6 +8,9 @@ from acrawler.exceptions import ReScheduleError
 class BaseCounter:
     def __init__(self, crawler):
         self.crawler = crawler
+        self.init_config()
+
+    def init_config(self):
 
         # Checking log by special host
         self.conf = (self.crawler.config.get("MAX_REQUESTS_SPECIAL_HOST") or {}).copy()
@@ -100,8 +103,7 @@ class BaseCounter:
 
         if origin:
             target = self.delay
-
-        delay = randint(int(target * 8), (target * 12)) / 10
+        delay = round(random.uniform(target*0.8, target*1.2),2)
         await asyncio.sleep(delay)
         await self.required_inc()
         req.inprogress = True
@@ -182,6 +184,7 @@ class Counter(BaseCounter):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
+        self.init_config()
         self.__dict__["_finished"] = asyncio.Event()
         if self.unfinished == 0:
             self._finished.set()
