@@ -74,7 +74,7 @@ class Worker:
                         if isinstance(new_task, dict):
                             new_task = DefaultItem(extra=new_task)
                         if isinstance(new_task, Task):
-                            new_task.meta = {**task.meta}
+                            new_task.meta = {**task.meta, **new_task.meta}
                             await self.crawler.add_task(new_task, ancestor=task.ancestor)
                         else:
                             continue
@@ -589,7 +589,7 @@ class Crawler(object):
 
             if self.fi_df.exists():
                 with open(self.fi_df, "rb") as f:
-                    self.sdl.df = pickle.load(f)
+                    self.sdl_req.df = pickle.load(f)
 
             if self.fi_store.exists():
                 with open(self.fi_store, "rb") as f:
@@ -634,7 +634,7 @@ class Crawler(object):
             logger.info(f"Dump {len(tasks)} normal tasks from local file.")
 
             with open(self.fi_df, "wb") as f:
-                pickle.dump(self.sdl.df, f)
+                pickle.dump(self.sdl_req.df, f)
 
             with open(self.fi_store, "wb") as f:
                 pickle.dump(self.storage, f)
@@ -647,7 +647,7 @@ class Crawler(object):
                 await self._log_status()
 
     async def _log_status(self):
-        time_delta = time.time() - self.start_time
+        time_delta = int(time.time() - self.start_time)
         logger.info(f"Statistic: working {time_delta:.2f}s")
         counts_dict = await self.counter.get_counts_dict()
         for family in counts_dict.keys():
@@ -657,7 +657,7 @@ class Crawler(object):
                 int((success - self.initial_counts.get(family, (0, 0))[1]) / 30) * 60
             )
             logger.info(
-                f"Statistic: {family:<13} ~ success {success:<5}, fail {failure:<4} ~ {speed}/min in the past 30s"
+                f"Statistic: {family:<13} ~ success {success:<5}, fail {failure:<4} ~ {speed}/min"
             )
         self.initial_counts = deepcopy(counts_dict)
         logger.info(
