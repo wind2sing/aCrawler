@@ -50,7 +50,7 @@ class ChainCrawler:
         self.config["DOWNLOAD_DELAY"] = delay
         return self
 
-    def retry(self, retry=3):
+    def retry(self, retry=4):
         self.config["MAX_TRIES"] = retry
         return self
 
@@ -119,6 +119,10 @@ class ChainRequest:
         self.kws["family"] = family
         self.kws["method"] = "GET"
         self.kws["callback"] = []
+
+    def kwargs(self, **kwargs):
+        self.kws.update(kwargs)
+        return self
 
     def status_allowed(self, allowed):
         self.kws["status_allowed"] = allowed
@@ -192,8 +196,10 @@ class ChainRequest:
         return self
 
     def to_vanilla(self, **kwargs):
+        urls = []
         while self._urls:
-            url = self._urls.pop()
+            urls.append(self._urls.pop())
+        for url in reversed(urls):
             yield Request(url, **self.kws, **kwargs)
 
     def callback(self):
@@ -213,6 +219,7 @@ class ChainItem:
         self.kws["css"] = {}
         self.kws["xpath"] = {}
         self.kws["re"] = {}
+        self.kws["default"] = {}
         self.primary_family = family or "Item"
 
     def extra(self, extra: dict):
@@ -230,6 +237,10 @@ class ChainItem:
 
     def css(self, rules: dict):
         self.kws["css"].update(rules)
+        return self
+
+    def default(self, rules: dict):
+        self.kws["default"].update(rules)
         return self
 
     def xpath(self, rules: dict):
