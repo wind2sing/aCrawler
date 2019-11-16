@@ -28,12 +28,13 @@ class Item(Task, MutableMapping):
     store = False
 
     def __init__(
-        self, extra: dict = None, extra_from_meta=False, log=None, store=None, **kwargs,
+        self, extra: dict = None, extra_from_meta=False, log=None, store=None, family=None, **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
-            dont_filter=dont_filter, ignore_exception=ignore_exception, **kwargs
+            dont_filter=dont_filter, ignore_exception=ignore_exception, 
+            family=family, **kwargs
         )
         self.extra = extra or {}
         if extra_from_meta:
@@ -229,6 +230,7 @@ class ParselItem(Item):
         css=None,
         xpath=None,
         re=None,
+        default=None,
         inline=None,
         inline_divider=None,
         bindmap=None,
@@ -242,7 +244,7 @@ class ParselItem(Item):
         self.inline_divider = inline_divider or self.inline_divider
 
         self.sel = selector
-        self.default_rules = self.default
+        self.default_rules = default or self.default
 
         self.css_rules_first = {}
         self.xpath_rules_first = {}
@@ -348,7 +350,7 @@ class ParselItem(Item):
             item.update({field: self.sel.css(rule).get()})
 
         for field, rule in self.xpath_rules_first.items():
-            item.update({field: self.sel.xpath(rule, **self.meta).get()})
+            item.update({field: self.sel.xpath(rule).get()})
 
         for field, rule in self.re_rules_first.items():
             item.update({field: self.sel.re_first(rule)})
@@ -357,7 +359,7 @@ class ParselItem(Item):
             item.update({field: self.sel.css(rule).getall()})
 
         for field, rule in self.xpath_rules.items():
-            item.update({field: self.sel.xpath(rule, **self.meta).getall()})
+            item.update({field: self.sel.xpath(rule).getall()})
 
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
