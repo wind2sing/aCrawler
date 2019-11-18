@@ -174,89 +174,6 @@ class ParselXItem(Item):
         return self._load()
 
 
-class Field:
-    def __init__(self, default=None, drop_false=True):
-        if callable(default):
-            self.value = default()
-        else:
-            self.value = default
-        self._rules = []
-        self.drop_false = drop_false
-
-    def css(self, rule: str):
-        self._rules.append(("css", rule))
-        return self
-
-    def xpath(self, rule: str):
-        self._rules.append(("xpath", rule))
-        return self
-
-    def re(self, rule: str):
-        self._rules.append(("re", rule))
-        return self
-
-    def re_first(self, rule: str):
-        self._rules.append(("re_first", rule))
-        return self
-
-    def get(self):
-        self._rules.append(("get", None))
-        return self
-
-    def getall(self):
-        self._rules.append(("getall", None))
-        return self
-
-    def filter(self, func):
-        self._rules.append(("filter", func))
-        return self
-
-    def map(self, func):
-        self._rules.append(("map", func))
-        return self
-
-    def process(self, func):
-        self._rules.append(("process", func))
-        return self
-
-    def drop(self, func=lambda x: not bool(x)):
-        self._rules.append(("drop", func))
-        return self
-
-    def first(self):
-        self._rules.append(("first", None))
-        return self
-
-    def parse(self, sel: "SelectorX"):
-        target = sel
-        for rkey, rule in self._rules:
-            if rkey == "filter":
-                target = [t for t in target if rule(t)]
-            elif rkey == "map":
-                target = [rule(t) for t in target]
-            elif rkey == "process":
-                target = rule(target)
-            elif rkey == "drop":
-                if rule(target):
-                    raise DropFieldError
-            elif rkey == "first":
-                if isinstance(target, list) and target:
-                    target = target[0]
-                else:
-                    target = None
-            else:
-                # call parsel to parse
-                if rule is None:
-                    v = getattr(target, rkey)()
-                else:
-                    v = getattr(target, rkey)(rule)
-                if self.drop_false and not v:
-                    raise DropFieldError
-                else:
-                    target = v
-        self.value = target
-        return self.value
-
 
 class ParselItem(Item):
     """The item working with Parsel.
@@ -415,9 +332,6 @@ class ParselItem(Item):
         for field, rule in self.re_rules.items():
             item.update({field: self.sel.re(rule)})
 
-        for key, field in self.__class__.__dict__.items():
-            if isinstance(field, Field):
-                self._on_field(field, dest_field=key)
 
         self.process(item)
         return self.content
@@ -439,11 +353,8 @@ class ParselItem(Item):
 
     def _on_field(self, field, processor=lambda x: x, dest_field: str = None):
         try:
-            if isinstance(field, str):
-                dest_field = dest_field or field
-                val = processor(self[field])
-            elif isinstance(field, Field):
-                val = field.parse(self.sel)
+            dest_field = dest_field or field
+            val = processor(self[field])
             self[dest_field] = val
         except DropFieldError:
             self.pop(dest_field, None)
