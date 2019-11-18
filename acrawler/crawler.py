@@ -131,7 +131,7 @@ class Worker:
             if self.current_task:
                 self.current_task.tries -= 1
                 task.dont_filter = True
-                logger.info("During shutdown, put back {}".format(task))
+                logger.info("Shutdown: put back {}".format(task))
                 await self.sdl.produce(task)
             raise e
         except Exception as e:

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.6](https://github.com/wooddance/aCrawler/compare/v0.1.5...v0.1.6) (2019-11-18)
+
+
+### Bug Fixes
+
+* **counter:** init config after load ([656c5a7](https://github.com/wooddance/aCrawler/commit/656c5a7))
+* **crawler:** meta merge ([07af099](https://github.com/wooddance/aCrawler/commit/07af099))
+* **item:** family argument ([85a9ff6](https://github.com/wooddance/aCrawler/commit/85a9ff6))
+
+
+### Features
+
+* **chain:** default & kwargs ([8629dcf](https://github.com/wooddance/aCrawler/commit/8629dcf))
+* **item:** meta considered as xpath vars ([a34750b](https://github.com/wooddance/aCrawler/commit/a34750b))
+* **item:** ParselXItem ([a3ef679](https://github.com/wooddance/aCrawler/commit/a3ef679))
+* **task:** pass meta between parent and child task ([3ae6c46](https://github.com/wooddance/aCrawler/commit/3ae6c46))
+
+
+
 ### [0.1.5](https://github.com/wooddance/aCrawler/compare/v0.1.4...v0.1.5) (2019-11-07)
 
 

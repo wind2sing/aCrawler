@@ -31,17 +31,17 @@ Feature
 Installation
 ------------
 
-To install, simply use `pipenv <http://pipenv.org/>`_ (or pip):
+To install, simply use pip:
 
 .. code-block:: bash
 
-   $ pipenv install acrawler
+   $ pip install acrawler
 
    (Optional)
-   $ pipenv install uvloop      #(only Linux/macOS, for faster asyncio event loop)
-   $ pipenv install aioredis    #(if you need Redis support)
-   $ pipenv install motor       #(if you need MongoDB support)
-   $ pipenv install aiofiles    #(if you need FileRequest)
+   $ pip install uvloop      #(only Linux/macOS, for faster asyncio event loop)
+   $ pip install aioredis    #(if you need Redis support)
+   $ pip install motor       #(if you need MongoDB support)
+   $ pip install aiofiles    #(if you need FileRequest)
 
 Documentation
 -------------
@@ -185,9 +185,11 @@ See `examples <examples/>`_.
 Todo
 ----
 
-* Add delta_key support for request
+* Replace parsel with parselx
+* clean redundant handlers
 * Cralwer's name for distinguishing
-* Command Line config support
+* Use dynaconf as configuration manager
+* Add delta_key support for request
 * Monitor all crawlers in web
 * Write detailed Documentation
-* Write testing code
+* Testing

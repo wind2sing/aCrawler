@@ -53,13 +53,17 @@ class Processors(object):
 
         return _f
 
-    @staticmethod
-    def map(func):
+    @classmethod
+    def map(cls, func):
         """ apply function to every item of filed's values list
         """
 
         def _f(values):
-            return [func(v) for v in values]
+            if isinstance(func, str):
+                f = cls.functions[func]
+            else:
+                f = func
+            return [f(v) for v in values]
 
         return _f
 
@@ -180,13 +184,13 @@ class Processors(object):
             match = pattern.match(value or "")
             if match:
                 return datetime(*map(int, match.groups()))
+
+            if error_drop:
+                raise DropFieldError
+            elif error_keep:
+                return value
             else:
-                if error_drop:
-                    raise DropFieldError
-                elif error_keep:
-                    return value
-                else:
-                    return None
+                return None
 
         return _f
 
@@ -212,12 +216,70 @@ class Processors(object):
             match = pattern.match(value or "")
             if match:
                 return date(*map(int, match.groups()))
+
+            if error_drop:
+                raise DropFieldError
+            elif error_keep:
+                return value
             else:
-                if error_drop:
-                    raise DropFieldError
-                elif error_keep:
-                    return value
-                else:
-                    return None
+                return None
+
+        return _f
+
+    @staticmethod
+    def to_float(error_drop=False, error_keep=False, regex=None):
+        """extract float, return None if not matched
+
+        :param error_drop: drop the field if not matched, defaults to False
+        :type error_drop: bool, optional
+        :param error_keep: keep the original value if not matched, defaults to False
+        :type error_keep: bool, optional
+        """
+
+        if not regex:
+            regex = r"\D*(\d*\.?\d*).*"
+
+        pattern = re.compile(regex)
+
+        def _f(value):
+            match = pattern.match(value or "")
+            if match and match.group(1):
+                return float(match.group(1))
+
+            if error_drop:
+                raise DropFieldError
+            elif error_keep:
+                return value
+            else:
+                return None
+
+        return _f
+
+    @staticmethod
+    def to_int(error_drop=False, error_keep=False, regex=None):
+        """extract int, return None if not matched
+
+        :param error_drop: drop the field if not matched, defaults to False
+        :type error_drop: bool, optional
+        :param error_keep: keep the original value if not matched, defaults to False
+        :type error_keep: bool, optional
+        """
+
+        if not regex:
+            regex = r"\D*(\d+).*"
+
+        pattern = re.compile(regex)
+
+        def _f(value):
+            match = pattern.match(value or "")
+            if match:
+                return int(match.group(1))
+
+            if error_drop:
+                raise DropFieldError
+            elif error_keep:
+                return value
+            else:
+                return None
 
         return _f
