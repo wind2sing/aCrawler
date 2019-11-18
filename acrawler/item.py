@@ -2,7 +2,7 @@ import logging
 from collections import MutableMapping
 from typing import AsyncGenerator, Callable
 
-from parsel import Selector
+from parselx import SelectorX
 
 from acrawler.exceptions import DropFieldError, SkipTaskImmediatelyError
 from acrawler.task import Task
@@ -28,13 +28,21 @@ class Item(Task, MutableMapping):
     store = False
 
     def __init__(
-        self, extra: dict = None, extra_from_meta=False, log=None, store=None, family=None, **kwargs,
+        self,
+        extra: dict = None,
+        extra_from_meta=False,
+        log=None,
+        store=None,
+        family=None,
+        **kwargs,
     ):
         dont_filter = kwargs.pop("dont_filter", True)
         ignore_exception = kwargs.pop("ignore_exception", True)
         super().__init__(
-            dont_filter=dont_filter, ignore_exception=ignore_exception, 
-            family=family, **kwargs
+            dont_filter=dont_filter,
+            ignore_exception=ignore_exception,
+            family=family,
+            **kwargs,
         )
         self.extra = extra or {}
         if extra_from_meta:
@@ -103,7 +111,7 @@ class Item(Task, MutableMapping):
     def __setstate__(self, state):
         sel_text = state.pop("__sel_text", None)
         if sel_text:
-            sel = Selector(sel_text)
+            sel = SelectorX(sel_text)
         else:
             sel = None
         super().__setstate__(state)
@@ -114,10 +122,56 @@ class Item(Task, MutableMapping):
 
 
 class DefaultItem(Item):
-    """ Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
+    """Any python dictionary yielded from a task's execution will be cathed as :class:`DefaultItem`.
 
     It's the same as :class:`Item`. But its families has one more member 'DefaultItem'.
     """
+
+
+class ParselXItem(Item):
+    """The Item work with parselx library."""
+
+    rule = {}
+
+    def __init__(
+        self,
+        sel: "SelectorX" = None,
+        rule=None,
+        text=None,
+        family=None,
+        extra=None,
+        extra_from_meta=False,
+        log=None,
+        store=None,
+        **kwargs,
+    ):
+        super().__init__(
+            extra=extra,
+            extra_from_meta=extra_from_meta,
+            log=log,
+            store=store,
+            family=family,
+            **kwargs,
+        )
+        self.sel = sel
+        self.rule = rule or self.rule
+
+    async def _execute(self, **kwargs) -> _TaskGenerator:
+        if self.sel:
+            await self._load()
+            async for task in super()._execute(**kwargs):
+                yield task
+
+    async def _load(self):
+        result = self.sel.g(self.rule)
+        if isinstance(result, dict):
+            self.content.update(result)
+        else:
+            self.content.update({"item": result})
+        return self.content
+
+    async def load(self):
+        return self._load()
 
 
 class Field:
@@ -173,7 +227,7 @@ class Field:
         self._rules.append(("first", None))
         return self
 
-    def parse(self, sel: Selector):
+    def parse(self, sel: "SelectorX"):
         target = sel
         for rkey, rule in self._rules:
             if rkey == "filter":
@@ -205,7 +259,7 @@ class Field:
 
 
 class ParselItem(Item):
-    """The item working with Parser.
+    """The item working with Parsel.
 
     The item receives Parsel's selector and several rules.
     The selector will process item's fields with these rules.
@@ -254,9 +308,6 @@ class ParselItem(Item):
         self.xpath_rules = {}
         self.re_rules = {}
         self.field_processors = {}
-
-        # shortcut
-        self.Selector = Selector
 
     async def _execute(self, **kwargs) -> _TaskGenerator:
         if self.sel:

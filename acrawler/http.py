@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import aiohttp
 from multidict import CIMultiDict
-from parsel import Selector
+from parselx import SelectorX
 from yarl import URL
 
 from acrawler.task import Task
@@ -198,6 +198,8 @@ class Request(Task):
         state = super().__getstate__()
         state.pop("session", None)
         state.pop("client", None)
+        if 'exceptions' in state:
+            state['exceptions'] = []
         return state
 
     def __setstate__(self, state):
@@ -309,7 +311,7 @@ class Response(Task):
     def sel(self):
         if self._sel is None:
             try:
-                self._sel = Selector(self.text)
+                self._sel = SelectorX(self.text, vars=self.meta)
             except Exception as e:
                 logger.error(e)
         return self._sel
@@ -331,9 +333,9 @@ class Response(Task):
         if source is None:
             source = self.pq
         if isinstance(source, pyquery.PyQuery):
-            self._sel = Selector(source.html())
+            self._sel = SelectorX(source.html(), vars=self.meta)
         elif isinstance(source, str):
-            self._sel = Selector(source)
+            self._sel = SelectorX(source, vars=self.meta)
 
     @property
     def url_str(self):
@@ -374,7 +376,7 @@ class Response(Task):
                 a = a[0]
         if isinstance(a, str):
             url = a
-        elif isinstance(a, Selector) and "href" in a.attrib:
+        elif isinstance(a, SelectorX) and "href" in a.attrib:
             url = a.attrib["href"]
         else:
             raise ValueError("urljoin receive bad argument{}".format(a))
@@ -459,7 +461,7 @@ class Response(Task):
     def __setstate__(self, state):
         sel_text = state.pop("__sel_text", None)
         if sel_text:
-            _sel = Selector(sel_text)
+            _sel = SelectorX(sel_text, vars=state['meta'])
         else:
             _sel = None
         super().__setstate__(state)

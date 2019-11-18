@@ -5,8 +5,14 @@ verify_ssl = true
 
 [packages]
 aiohttp = {extras = ["speedups"],version = "*"}
-parsel = "*"
 dill = "*"
+parselx = "*"
 
 [requires]
 python_version = "3.6"
+
+[dev-packages]
+black = "*"
+
+[pipenv]
+allow_prereleases = true

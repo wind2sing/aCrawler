@@ -44,7 +44,6 @@ class Parser:
         css_divider: str = None,
         item_type: ParselItem = None,
         extra: dict = None,
-        pass_meta: bool = False,
         selectors_loader: _Function = None,
         callbacks: List[_Function] = None,
     ):
@@ -54,7 +53,6 @@ class Parser:
 
         self.item_type = item_type
         self.extra = extra
-        self.pass_meta = pass_meta
 
         self.css_divider = css_divider
         self.selectors_loader = selectors_loader or self._selectors_loader
@@ -104,16 +102,6 @@ class Parser:
 
         for sel in self.selectors_loader(response.sel):
             if self.item_type:
-                if issubclass(self.item_type, ParselItem):
-                    extra = {}
-                    if self.extra:
-                        extra.update(self.extra)
-                    if self.pass_meta and response.meta:
-                        meta = response.meta
-                    else:
-                        meta = None
-                    yield self.item_type(sel, extra=extra, meta=meta)
-                else:
-                    logger.warning(
-                        f"Parser'item_type should be a subclass of <ParselItem>, {self.item_type}found!"
-                    )
+                extra = self.extra or None
+                yield self.item_type(sel, extra=extra)
+
