@@ -97,14 +97,12 @@ class Worker:
                     continue
                 except Exception as e:
                     exception = True
-                    if not task.ignore_exception and task.tries < self._max_tries:
+                    if not task.ignore_exception and task.tries <= self._max_tries:
                         task.exetime = time.time()
                         await self.crawler.add_task(task, dont_filter=True)
                         retry = True
                         logger.error(
-                            "{}->Retry...\n{}".format(
-                                task, traceback.format_exc(chain=False)
-                            )
+                            f"{task}->Retry{task.tries}/{self._max_tries}...\n{traceback.format_exc(chain=False)}"
                         )
                         await self.crawler.counter.task_done(task, -1)
                     else:
@@ -692,7 +690,7 @@ class CrawlerStart(SpecialTask):
 
     async def _execute(self):
         await self._produce_tasks_from_start_requests()
-        self.crawler.create_task(self.crawler.next_requests())
+        self.loop.create_task(self.crawler.next_requests())
 
     async def _produce_tasks_from_start_requests(self):
         logger.debug("Produce initial tasks...")

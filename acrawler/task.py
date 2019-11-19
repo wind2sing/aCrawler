@@ -44,6 +44,7 @@ class Task:
         family=None,
         recrawl: int = 0,
         exetime=0,
+        **kwargs,
     ):
 
         self.dont_filter = dont_filter

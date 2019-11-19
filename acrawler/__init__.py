@@ -1,7 +1,7 @@
 from .crawler import Crawler
 from .parser import Parser
 from .task import Task
-from .item import Item, ParselItem, Processors, ParselXItem
+from .item import Item, ParselItem, Processors, ParselxItem
 from .http import Request, Response, FileRequest
 from .middleware import middleware, Handler, register
 from .handlers import callback
@@ -13,7 +13,7 @@ from .exceptions import (
     ReScheduleImmediatelyError,
 )
 
-from .chain import ChainCrawler, ChainRequest, ChainItem
+from .chain import ChainCrawler, ChainRequest, ChainItemX, ChainItemP
 
 # alias
 x = Processors

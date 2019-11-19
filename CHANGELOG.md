@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 * **chain:** default & kwargs ([8629dcf](https://github.com/wooddance/aCrawler/commit/8629dcf))
 * **item:** meta considered as xpath vars ([a34750b](https://github.com/wooddance/aCrawler/commit/a34750b))
-* **item:** ParselXItem ([a3ef679](https://github.com/wooddance/aCrawler/commit/a3ef679))
+* **item:** ParselxItem ([a3ef679](https://github.com/wooddance/aCrawler/commit/a3ef679))
 * **task:** pass meta between parent and child task ([3ae6c46](https://github.com/wooddance/aCrawler/commit/3ae6c46))
 
 

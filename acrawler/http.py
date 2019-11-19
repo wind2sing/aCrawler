@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import AsyncGenerator, Callable, Iterable, List, Union
 from urllib.parse import urljoin
+import traceback
 
 import aiohttp
 from multidict import CIMultiDict
@@ -79,6 +80,7 @@ class Request(Task):
         meta: dict = None,
         priority: int = 0,
         family=None,
+        family_for_response=None,
         recrawl=0,
         exetime=0,
         **kwargs,
@@ -104,7 +106,7 @@ class Request(Task):
         self.session = None
         self.client = None
         self.response: Response = None
-        self.httpfamily = family
+        self.family_for_response = family_for_response
         self.encoding = encoding
         self.links_to_abs = links_to_abs
 
@@ -180,7 +182,7 @@ class Request(Task):
                     links_to_abs=self.links_to_abs,
                     callbacks=self.callbacks.copy(),
                     request=self,
-                    family=self.httpfamily,
+                    family=self.family_for_response,
                 )
                 rt = self.response
                 logger.info(f"<{self.response.status}> {self.response.url_str}")
@@ -308,12 +310,12 @@ class Response(Task):
         return self._json
 
     @property
-    def sel(self):
+    def sel(self)->"SelectorX":
         if self._sel is None:
             try:
                 self._sel = SelectorX(self.text, vars=self.meta)
             except Exception as e:
-                logger.error(e)
+                logger.error(traceback.format_exc(chain=False))
         return self._sel
 
     @property
@@ -394,14 +396,18 @@ class Response(Task):
         if pass_meta:
             meta.update(self.meta)
         count = 0
-        for url in self.sel.css(css).getall():
-            request = Request(url, meta=meta, **kwargs)
-            for cb in self.request.callbacks:
-                request.add_callback(cb)
-            yield request
-            count += 1
-            if limit and count >= limit:
-                break
+        urls = self.sel.g(css)
+        if not isinstance(urls, list):
+            urls = [urls]
+        for url in urls:
+            if url:
+                request = Request(url, meta=meta, **kwargs)
+                for cb in self.request.callbacks:
+                    request.add_callback(cb)
+                yield request
+                count += 1
+                if limit and count >= limit:
+                    break
 
     def follow(self, css, callback=None, limit=0, pass_meta=False, **kwargs):
         """ Yield requests in current page using css selector.
@@ -416,12 +422,17 @@ class Response(Task):
         if pass_meta:
             meta.update(self.meta)
         count = 0
-        for url in self.sel.css(css).getall():
-            request = Request(url, callback=callback, meta=meta, **kwargs)
-            yield request
-            count += 1
-            if limit and count >= limit:
-                break
+
+        urls = self.sel.g(css)
+        if not isinstance(urls, list):
+            urls = [urls]
+        for url in urls:
+            if url:
+                request = Request(url, callback=callback, meta=meta, **kwargs)
+                yield request
+                count += 1
+                if limit and count >= limit:
+                    break
 
     def spawn(self, item, divider=None, pass_meta=True, **kwargs):
         """ Yield items in current page

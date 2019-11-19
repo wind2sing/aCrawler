@@ -1,7 +1,7 @@
 from pprint import pformat
 from acrawler.crawler import Crawler
 from acrawler.http import Request, Response
-from acrawler.item import ParselItem, Item
+from acrawler.item import ParselItem, ParselxItem, Item
 from acrawler.utils import check_import, to_asyncgen
 from acrawler.middleware import register
 
@@ -212,14 +212,10 @@ class ChainRequest:
         return decorator
 
 
-class ChainItem:
+class _ChainItem:
     def __init__(self, family=None):
         self.kws = {}
         self.kws["family"] = family
-        self.kws["css"] = {}
-        self.kws["xpath"] = {}
-        self.kws["re"] = {}
-        self.kws["default"] = {}
         self.primary_family = family or "Item"
 
     def extra(self, extra: dict):
@@ -235,24 +231,19 @@ class ChainItem:
         self.kws["store"] = True
         return self
 
-    def css(self, rules: dict):
-        self.kws["css"].update(rules)
-        return self
-
-    def default(self, rules: dict):
-        self.kws["default"].update(rules)
-        return self
-
-    def xpath(self, rules: dict):
-        self.kws["xpath"].update(rules)
-        return self
-
-    def re(self, rules: dict):
-        self.kws["re"].update(rules)
-        return self
-
     def to_vanilla(self, sel=None, **kwargs):
-        yield ParselItem(sel, **self.kws, **kwargs)
+        raise NotImplementedError
+
+    def debug(self, priority=100, pretty=False):
+        def quick_debug_item(item):
+            if pretty:
+                print(pformat(item.content))
+            else:
+                print(item)
+
+        register(self.primary_family, priority=priority)(quick_debug_item)
+
+        return self
 
     def register(self, position: int = None, priority: int = None):
         """ decorator, register a handler function. """
@@ -279,14 +270,37 @@ class ChainItem:
         register(self.primary_family, priority=priority)(quick_to_mongo)
         return self
 
-    def debug(self, priority=100, pretty=False):
-        def quick_debug_item(item):
-            if pretty:
-                print(pformat(item.content))
-            else:
-                print(item)
 
-        register(self.primary_family, priority=priority)(quick_debug_item)
+class ChainItemP(_ChainItem):
+    def __init__(self, family=None):
+        super().__init__(family=family)
+        self.kws["css"] = {}
+        self.kws["xpath"] = {}
+        self.kws["re"] = {}
 
+    def css(self, rules: dict):
+        self.kws["css"].update(rules)
         return self
 
+    def xpath(self, rules: dict):
+        self.kws["xpath"].update(rules)
+        return self
+
+    def re(self, rules: dict):
+        self.kws["re"].update(rules)
+        return self
+
+    def to_vanilla(self, sel=None, **kwargs):
+        yield ParselItem(sel, **self.kws, **kwargs)
+
+
+class ChainItemX(_ChainItem):
+    def __init__(self, family=None):
+        super().__init__(family=family)
+        self.kws["rule"] = {}
+
+    def rule(self, rule: dict):
+        self.kws["rule"].update(rule)
+
+    def to_vanilla(self, sel=None, **kwargs):
+        yield ParselxItem(sel, **self.kws, **kwargs)

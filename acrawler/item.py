@@ -128,7 +128,7 @@ class DefaultItem(Item):
     """
 
 
-class ParselXItem(Item):
+class ParselxItem(Item):
     """The Item work with parselx library."""
 
     rule = {}
@@ -156,11 +156,11 @@ class ParselXItem(Item):
         self.sel = sel
         self.rule = rule or self.rule
 
+
     async def _execute(self, **kwargs) -> _TaskGenerator:
-        if self.sel:
-            await self._load()
-            async for task in super()._execute(**kwargs):
-                yield task
+        await self._load()
+        async for task in super()._execute(**kwargs):
+            yield task
 
     async def _load(self):
         result = self.sel.g(self.rule)
