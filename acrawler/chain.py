@@ -271,7 +271,7 @@ class _ChainItem:
         return self
 
 
-class ChainItemP(_ChainItem):
+class ChainItem(_ChainItem):
     def __init__(self, family=None):
         super().__init__(family=family)
         self.kws["css"] = {}

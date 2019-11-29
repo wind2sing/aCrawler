@@ -13,7 +13,7 @@ from .exceptions import (
     ReScheduleImmediatelyError,
 )
 
-from .chain import ChainCrawler, ChainRequest, ChainItemX, ChainItemP
+from .chain import ChainCrawler, ChainRequest, ChainItemX, ChainItem
 
 # alias
 x = Processors
